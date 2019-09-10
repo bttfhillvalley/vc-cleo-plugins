@@ -1,0 +1,6 @@
+[submodule "bttfhv/III.VC.CLEO"]
+	path = bttfhv/III.VC.CLEO
+	url = https://github.com/cleolibrary/III.VC.CLEO.git
+[submodule "bttfhv/plugin-sdk"]
+	path = bttfhv/plugin-sdk
+	url = https://github.com/DK22Pac/plugin-sdk.git
