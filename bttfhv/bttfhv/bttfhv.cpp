@@ -40,89 +40,53 @@ float radians(float degrees) {
 tScriptVar *Params;
 using namespace plugin;
 
-// Car stuff
-eOpcodeResult __stdcall getCarComponentRotation(CScript* script) {
-	script->Collect(5);
-	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
-	RwFrame* cframedum = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[0].cVar);
-	if (cframedum) {
-		RwFrame* cframe = cframedum->child;
-		CMatrix cmatrix(&cframe->modelling, false);
+eOpcodeResult __stdcall setSuspensionValues(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* veh = CPools::GetVehicle(Params[0].nVar);
+	if (veh) {
+		veh->m_pHandlingData->fSuspensionForceLevel = 1.8f;
+		veh->m_pHandlingData->fSuspBias = 0.5f;
+		veh->m_pHandlingData->fSuspUpperLimit = 0.08f;
+		veh->m_pHandlingData->fSuspLowerLimit = -0.02f;
 	}
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall moveCarComponent(CScript *script)
+eOpcodeResult __stdcall turnOnEngine(CScript* script)
 {
-	script->Collect(5);
-	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
-	RwFrame *cframe = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[0].cVar);
-	if (cframe) {
-		CMatrix cmmatrix(&cframe->modelling, false);
-		//CVector cpos(Params[1].fVar, Params[2].fVar, Params[3].fVar);
-		//cmatrix.pos = cpos;
-		cmmatrix.SetTranslateOnly(Params[1].fVar, Params[2].fVar, Params[3].fVar);
-		cmmatrix.UpdateRW();
-	}
-	return OR_CONTINUE;
-}
-
-
-eOpcodeResult __stdcall setCarComponentAlpha(CScript* script)
-{
-	script->Collect(3);
+	script->Collect(1);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	RwFrame* detail = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[1].cVar);
-
-	if (detail) {
-		RpAtomic* atomic;
-		RwFrameForAllObjects(detail, GetVehicleAtomicObjectCB, &atomic);
-		vehicle->SetComponentAtomicAlpha(atomic, Params[2].nVar);
-	}
+	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+	CDamageManager* damage = &automobile->m_carDamage;
+	damage->SetEngineStatus(250);
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall setCarComponentVisibility(CScript *script)
+eOpcodeResult __stdcall getEngineStatus(CScript* script)
 {
-	script->Collect(3);
-	CVehicle* vehicle = CPools::GetVehicle(Params[2].nVar);
-	RwFrame *detail = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[0].cVar);
-	if (detail) {
-		CAutomobile *automobile = reinterpret_cast<CAutomobile *>(vehicle);
-		RwFrameForAllObjects(detail, SetVehicleAtomicVisibilityCB, (void *)(Params[1].nVar));
-	}
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+	CDamageManager* damage = &automobile->m_carDamage;
+	unsigned int status = damage->GetEngineStatus();
+	Params[0].nVar = status;
+	script->Store(1);
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall setCarComponentIndexVisibility(CScript *script)
+eOpcodeResult __stdcall getCurrentGear(CScript* script)
 {
-	script->Collect(4);
-	CVehicle* vehicle = CPools::GetVehicle(Params[2].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[0].cVar, Params[3].nVar);
-	RwFrame *detail = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
-	if (detail) {
-		RwFrameForAllObjects(detail, SetVehicleAtomicVisibilityCB, (void *)(Params[1].nVar));
+	script->Collect(1);
+	CVehicle* veh = CPools::GetVehicle(Params[0].nVar);
+	if (veh) {
+		Params[0].nVar = (int)veh->m_nCurrentGear;
+		script->Store(1);
 	}
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall rotateCarComponent(CScript* script)
-{
-	script->Collect(5);
-	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
-	RwFrame* cframe = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[0].cVar);
-	if (cframe) {
-		CMatrix cmatrix(&cframe->modelling, false);
-		CVector cpos(cmatrix.pos);
-		cmatrix.SetRotate(radians(Params[1].fVar), radians(Params[2].fVar), radians(Params[3].fVar));
-		cmatrix.pos = cpos;
-		cmatrix.UpdateRW();
-	}
-	return OR_CONTINUE;
-}
-
-eOpcodeResult __stdcall setHover(CScript *script)
+eOpcodeResult __stdcall setHover(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
@@ -158,52 +122,117 @@ eOpcodeResult __stdcall setHover(CScript *script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall turnOnEngine(CScript* script)
+// Car stuff
+// Helper methods
+void setVisibility(CVehicle* vehicle, char* component, int visibility) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		RwFrameForAllObjects(frame, SetVehicleAtomicVisibilityCB, (void*)visibility);
+	}
+}
+
+void moveComponent(CVehicle* vehicle, char* component, float x, float y, float z) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		CMatrix cmmatrix(&frame->modelling, false);
+		cmmatrix.SetTranslateOnly(x, y, z);
+		cmmatrix.UpdateRW();
+	}
+}
+
+void setAlpha(CVehicle* vehicle, char* component, int alpha) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		RpAtomic* atomic;
+		RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
+		vehicle->SetComponentAtomicAlpha(atomic, alpha);
+	}
+}
+
+void rotateComponent(CVehicle* vehicle, char* component, float rx, float ry, float rz) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		CMatrix cmatrix(&frame->modelling, false);
+		CVector cpos(cmatrix.pos);
+		cmatrix.SetRotate(radians(rx), radians(ry), radians(rz));
+		cmatrix.pos = cpos;
+		cmatrix.UpdateRW();
+	}
+}
+
+// Opcodes
+eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 {
-	script->Collect(1);
+	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-	CDamageManager* damage = &automobile->m_carDamage;
-	damage->SetEngineStatus(250);
+	setVisibility(vehicle, Params[1].cVar, Params[2].nVar);
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall getEngineStatus(CScript* script)
+eOpcodeResult __stdcall setCarComponentIndexVisibility(CScript* script)
 {
-	script->Collect(2);
-	CVehicle* vehicle = CPools::GetVehicle(Params[1].nVar);
-	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-	CDamageManager* damage = &automobile->m_carDamage;
-	unsigned int status = damage->GetEngineStatus();
-	Params[0].nVar = status;
-	script->Store(1);
+	script->Collect(4);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[3].nVar);
+	setVisibility(vehicle, component, Params[2].nVar);
 	return OR_CONTINUE;
 }
 
-/*eOpcodeResult __stdcall setSuspensionValues(CScript* script)
+eOpcodeResult __stdcall setCarComponentAlpha(CScript* script)
 {
-	script->Collect(1);
-	CVehicle* veh = CPools::GetVehicle(Params[0].nVar);
-	if (veh) {
-		veh->m_pHandlingData->fSuspensionForceLevel = 1.8f;
-		veh->m_pHandlingData->fSuspBias = 0.5f;
-		veh->m_pHandlingData->fSuspUpperLimit = 0.08f;
-		veh->m_pHandlingData->fSuspLowerLimit = -0.02f;
-	}
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	setAlpha(vehicle, Params[1].cVar, Params[2].nVar);
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall getCurrentGear(CScript* script)
+eOpcodeResult __stdcall setCarComponentIndexAlpha(CScript* script)
 {
-	script->Collect(1);
-	CVehicle* veh = CPools::GetVehicle(Params[0].nVar);
-	if (veh) {
-		Params[0].nVar = (int)veh->m_nCurrentGear;
-		script->Store(1);
-	}
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[3].nVar);
+	setAlpha(vehicle, component, Params[2].nVar);
 	return OR_CONTINUE;
-}*/
+}
 
+eOpcodeResult __stdcall moveCarComponent(CScript *script)
+{
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
+	moveComponent(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall moveCarComponentIndex(CScript* script)
+{
+	script->Collect(6);
+	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[0].cVar, Params[5].nVar);
+	moveComponent(vehicle, component, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall rotateCarComponent(CScript* script)
+{
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
+	rotateComponent(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall rotateCarComponentIndex(CScript* script)
+{
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[0].cVar, Params[5].nVar);
+	rotateComponent(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	return OR_CONTINUE;
+}
 
 // Building stuff
 eOpcodeResult __stdcall addBuilding(CScript* script)
@@ -264,19 +293,25 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 	if (reason == DLL_PROCESS_ATTACH)
 	{
 		Params = CLEO_GetParamsAddress();
-		//Opcodes::RegisterOpcode(0x3FF3, setSuspensionValues);
-		Opcodes::RegisterOpcode(0x3FF4, setCarComponentAlpha);
-		Opcodes::RegisterOpcode(0x3FF5, getEngineStatus);
-		Opcodes::RegisterOpcode(0x3FF6, turnOnEngine);
-		//Opcodes::RegisterOpcode(0x3FF7, createLight);  // Needs to be reimplemented
-		Opcodes::RegisterOpcode(0x3FF8, setCarComponentIndexVisibility);
-		Opcodes::RegisterOpcode(0x3FF9, playCharAnim);
-		Opcodes::RegisterOpcode(0x3FFA, setHover);
-		Opcodes::RegisterOpcode(0x3FFB, setCarComponentVisibility);
-		Opcodes::RegisterOpcode(0x3FFC, moveCarComponent);
-		Opcodes::RegisterOpcode(0x3FFD, rotateCarComponent);
-		Opcodes::RegisterOpcode(0x3FFE, addBuilding);
-		Opcodes::RegisterOpcode(0x3FFF, removeBuilding);
+		Opcodes::RegisterOpcode(0x3F01, setSuspensionValues);
+		Opcodes::RegisterOpcode(0x3F02, getEngineStatus);
+		Opcodes::RegisterOpcode(0x3F03, turnOnEngine);
+		Opcodes::RegisterOpcode(0x3F04, getCurrentGear);
+		Opcodes::RegisterOpcode(0x3F05, setHover);
+		//Opcodes::RegisterOpcode(0x3F06, createLight);  // Needs to be reimplemented		
+		Opcodes::RegisterOpcode(0x3F07, playCharAnim);
+		Opcodes::RegisterOpcode(0x3F08, addBuilding);
+		Opcodes::RegisterOpcode(0x3F09, removeBuilding);
+
+		Opcodes::RegisterOpcode(0x3F10, setCarComponentVisibility);
+		Opcodes::RegisterOpcode(0x3F11, setCarComponentIndexVisibility);
+		Opcodes::RegisterOpcode(0x3F12, setCarComponentAlpha);
+		Opcodes::RegisterOpcode(0x3F13, setCarComponentIndexAlpha);
+		Opcodes::RegisterOpcode(0x3F14, moveCarComponent);
+		Opcodes::RegisterOpcode(0x3F15, moveCarComponentIndex);
+		Opcodes::RegisterOpcode(0x3F16, rotateCarComponent);
+		Opcodes::RegisterOpcode(0x3F17, rotateCarComponentIndex);
+		//Reserving 0x3F18-0x3F1F for get comman		
 	}
 	return TRUE;
 }
