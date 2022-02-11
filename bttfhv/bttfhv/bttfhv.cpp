@@ -12,7 +12,6 @@
 #include "CSprite2d.h"
 #include "Events.h"
 
-
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
 
 int __cdecl GetAtomicId(RpAtomic *atomic) {
@@ -24,6 +23,19 @@ RwObject *__cdecl SetVehicleAtomicVisibilityCB(RwObject *rwObject, void *data) {
 		rwObject->flags = 0;
 	else
 		rwObject->flags = 4;
+	return rwObject;
+}
+
+RwObject* __cdecl GetVehicleAtomicVisibilityCB(RwObject* rwObject, void* data) {
+	data = (void*)(rwObject->flags);
+	return rwObject;
+}
+
+RwObject* __cdecl TestFlags(RwObject* rwObject, void* data) {
+	if (data == (void*)(0))
+		rwObject->flags = 0;
+	else
+		rwObject->privateFlags = 0xF;
 	return rwObject;
 }
 
@@ -78,9 +90,9 @@ eOpcodeResult __stdcall getEngineStatus(CScript* script)
 eOpcodeResult __stdcall getCurrentGear(CScript* script)
 {
 	script->Collect(1);
-	CVehicle* veh = CPools::GetVehicle(Params[0].nVar);
-	if (veh) {
-		Params[0].nVar = (int)veh->m_nCurrentGear;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		Params[0].nVar = (int)vehicle->m_nCurrentGear;
 		script->Store(1);
 	}
 	return OR_CONTINUE;
@@ -118,6 +130,17 @@ eOpcodeResult __stdcall setHover(CScript* script)
 		{
 			vehicle->FlyingControl(1);
 		}
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isDoorOpen(CScript* script) {
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+
+		Params[0].nVar = (int)vehicle->IsDoorClosed(static_cast<eDoors>(Params[1].nVar));
+		script->Store(1);
 	}
 	return OR_CONTINUE;
 }
@@ -161,12 +184,49 @@ void rotateComponent(CVehicle* vehicle, char* component, float rx, float ry, flo
 	}
 }
 
+void setGlow(CVehicle* vehicle, char* component, int glow) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		RpAtomic* atomic;
+		RpGeometry* geometry;
+		RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
+		geometry = atomic->geometry;
+		if (glow == 0) {
+			geometry->flags &= 0xF7;  // Turn off Prelit
+			geometry->flags |= 0x20;  // Turn on Light
+		}
+		else {
+			geometry->flags |= 0x8;  // Turn on Prelit
+			geometry->flags &= 0xDF;  // Turn off Light
+		}
+	}
+}
+
 // Opcodes
 eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 {
 	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	setVisibility(vehicle, Params[1].cVar, Params[2].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setCarComponentGlow(CScript* script)
+{
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	setGlow(vehicle, Params[1].cVar, Params[2].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setCarComponentGlowIndex(CScript* script)
+{
+	script->Collect(4);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[3].nVar);
+	setGlow(vehicle, component, Params[2].nVar);
 	return OR_CONTINUE;
 }
 
@@ -298,11 +358,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F03, turnOnEngine);
 		Opcodes::RegisterOpcode(0x3F04, getCurrentGear);
 		Opcodes::RegisterOpcode(0x3F05, setHover);
-		//Opcodes::RegisterOpcode(0x3F06, createLight);  // Needs to be reimplemented		
+		Opcodes::RegisterOpcode(0x3F06, isDoorOpen);
 		Opcodes::RegisterOpcode(0x3F07, playCharAnim);
 		Opcodes::RegisterOpcode(0x3F08, addBuilding);
 		Opcodes::RegisterOpcode(0x3F09, removeBuilding);
-
 		Opcodes::RegisterOpcode(0x3F10, setCarComponentVisibility);
 		Opcodes::RegisterOpcode(0x3F11, setCarComponentIndexVisibility);
 		Opcodes::RegisterOpcode(0x3F12, setCarComponentAlpha);
@@ -311,7 +370,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F15, moveCarComponentIndex);
 		Opcodes::RegisterOpcode(0x3F16, rotateCarComponent);
 		Opcodes::RegisterOpcode(0x3F17, rotateCarComponentIndex);
-		//Reserving 0x3F18-0x3F1F for get comman		
+		Opcodes::RegisterOpcode(0x3F18, setCarComponentGlow);
+		Opcodes::RegisterOpcode(0x3F19, setCarComponentGlowIndex);
+
+		//Opcodes::RegisterOpcode(0x3F06, createLight);  // Needs to be reimplemented
+		//Reserving 0x3F18-0x3F1F for get command
 	}
 	return TRUE;
 }
