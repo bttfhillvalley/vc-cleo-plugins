@@ -69,9 +69,11 @@ eOpcodeResult __stdcall turnOnEngine(CScript* script)
 {
 	script->Collect(1);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-	CDamageManager* damage = &automobile->m_carDamage;
-	damage->SetEngineStatus(250);
+	if (vehicle) {
+		vehicle->m_nState = 0;
+		vehicle->m_nVehicleFlags.bEngineOn = 1;
+	}
+	
 	return OR_CONTINUE;
 }
 
@@ -79,9 +81,10 @@ eOpcodeResult __stdcall getEngineStatus(CScript* script)
 {
 	script->Collect(1);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-	CDamageManager* damage = &automobile->m_carDamage;
-	unsigned int status = damage->GetEngineStatus();
+	int status = 0;
+	if (vehicle) {
+		status = vehicle->m_nVehicleFlags.bEngineOn;
+	}
 	Params[0].nVar = status;
 	script->Store(1);
 	return OR_CONTINUE;
@@ -150,7 +153,6 @@ eOpcodeResult __stdcall isDoorOpen(CScript* script) {
 void setVisibility(CVehicle* vehicle, char* component, int visibility) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	if (frame) {
-		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
 		RwFrameForAllObjects(frame, SetVehicleAtomicVisibilityCB, (void*)visibility);
 	}
 }
@@ -187,7 +189,6 @@ void rotateComponent(CVehicle* vehicle, char* component, float rx, float ry, flo
 void setGlow(CVehicle* vehicle, char* component, int glow) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	if (frame) {
-		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
 		RpAtomic* atomic;
 		RpGeometry* geometry;
 		RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
