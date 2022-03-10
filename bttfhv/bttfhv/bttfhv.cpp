@@ -636,6 +636,21 @@ eOpcodeResult __stdcall getVelocity(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall getSteeringAngle(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	float angle = 0.0;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		angle = degrees(automobile->m_fSteerAngle);
+	}
+	Params[0].fVar = angle;
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
 void getModels(std::set<int>* models, char* path) {
 	std::ifstream in;
 	char fullpath[128];
@@ -960,7 +975,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F33, getVelocity);
 		Opcodes::RegisterOpcode(0x3F34, getVelocityVector);
 		Opcodes::RegisterOpcode(0x3F35, setVelocityVector);
-		//Opcodes::RegisterOpcode(0x3F36, addTex);
+		Opcodes::RegisterOpcode(0x3F36, getSteeringAngle);
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
 		//Reserving 0x3F18-0x3F1F for get command
