@@ -19,6 +19,7 @@
 
 
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
+//std::ofstream of("DEBUG", std::ofstream::app);
 
 int __cdecl GetAtomicId(RpAtomic *atomic) {
 	return *(&atomic->object.object.type + ms_atomicPluginOffset);
@@ -62,60 +63,74 @@ float degrees(float radians) {
 tScriptVar *Params;
 using namespace plugin;
 
-eOpcodeResult __stdcall setSuspensionValues(CScript* script)
+eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 {
-	script->Collect(1);
-	CVehicle* veh = CPools::GetVehicle(Params[0].nVar);
-	if (veh) {
-		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(veh);
-		int i;
-		CVector posn;
-		CVehicleModelInfo* mi = (CVehicleModelInfo*)CModelInfo::GetModelInfo(veh->m_nModelIndex);
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	int raise = Params[1].nVar;
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		if (!raise) {
+			vehicle->m_nVehicleFlags.bUsePlayerColModel = false;
+			automobile->SetupSuspensionLines();
+			return OR_CONTINUE;
+		}
+		CPlayerInfo* playerInfo = &CWorld::Players[CWorld::PlayerInFocus];
+
+		CVehicleModelInfo* mi = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehicle->m_nModelIndex));
 		CColModel* colModel = mi->GetColModel();
+		int i;
+		float wheelRadius = 0.5f * mi->m_fWheelSize;
+		float normalUpperLimit = automobile->m_pHandlingData->fSuspUpperLimit;
+		float normalLowerLimit = automobile->m_pHandlingData->fSuspLowerLimit;
+		float normalSpringLength = normalUpperLimit - normalLowerLimit;
+		float normalLineLength = normalSpringLength + wheelRadius;
 
-		// Each suspension line starts at the uppermost wheel position
-		// and extends down to the lowermost point on the tyre
-		/*for (i = 0; i < 4; i++) {
-			mi->GetWheelPosn(i, posn);
-			automobile->m_aWheelPosition[i] = posn.z;
+		float extendedUpperLimit = normalUpperLimit - 0.15f;
+		float extendedLowerLimit = normalLowerLimit - 0.15f;
+		float extendedSpringLength = extendedUpperLimit - extendedLowerLimit;
 
+		// Update collision model
+		playerInfo->m_ColModel = *colModel;
+		CColModel *specialColModel = &playerInfo->m_ColModel;
+		vehicle->m_nVehicleFlags.bUsePlayerColModel = true;
+
+		CVector pos;
+		for (i = 0; i < 4; i++) {
+			mi->GetWheelPosn(i, pos);
+			automobile->fWheelPos[i] = pos.z;
 
 			// uppermost wheel position
-			posn.z += pHandling->fSuspensionUpperLimit;
-			colModel->lines[i].p0 = posn;
+			if (i % 2) {
+
+				pos.z += normalUpperLimit;
+			}
+			else {
+				pos.z += extendedUpperLimit;
+			}
+			specialColModel->m_pLines[i].m_vStart = pos;
 
 			// lowermost wheel position
-			posn.z += pHandling->fSuspensionLowerLimit - pHandling->fSuspensionUpperLimit;
-			// lowest point on tyre
-			posn.z -= mi->m_wheelScale * 0.5f;
-			colModel->lines[i].p1 = posn;
+			pos.z -= normalLineLength;
+			specialColModel->m_pLines[i].m_vEnd = pos;
 
-			// this is length of the spring at rest
-			m_aSuspensionSpringLength[i] = pHandling->fSuspensionUpperLimit - pHandling->fSuspensionLowerLimit;
-			m_aSuspensionLineLength[i] = colModel->lines[i].p0.z - colModel->lines[i].p1.z;
+			if (i % 2) {
+				automobile->fSuspSpringLength[i] = normalSpringLength;
+			}
+			else {
+				automobile->fSuspSpringLength[i] = extendedSpringLength;
+			}
+			automobile->fSuspLineLength[i] = specialColModel->m_pLines[i].m_vStart.z - specialColModel->m_pLines[i].m_vEnd.z;
 		}
-
-		// Compress spring somewhat to get normal height on road
-		m_fHeightAboveRoad = m_aSuspensionSpringLength[0] * (1.0f - 1.0f / (4.0f * pHandling->fSuspensionForceLevel))
-			- colModel->lines[0].p0.z + mi->m_wheelScale * 0.5f;
-		for (i = 0; i < 4; i++)
-			m_aWheelPosition[i] = mi->m_wheelScale * 0.5f - m_fHeightAboveRoad;
-
-		// adjust col model to include suspension lines
-		if (colModel->boundingBox.min.z > colModel->lines[0].p1.z)
-			colModel->boundingBox.min.z = colModel->lines[0].p1.z;
-		float radius = Max(colModel->boundingBox.min.Magnitude(), colModel->boundingBox.max.Magnitude());
-		if (colModel->boundingSphere.radius < radius)
-			colModel->boundingSphere.radius = radius;
-
-		if (GetModelIndex() == MI_RCBANDIT) {
-			colModel->boundingSphere.radius = 2.0f;
-			for (i = 0; i < colModel->numSpheres; i++)
-				colModel->spheres[i].radius = 0.3f;
-		}*/
-
-
-		//veh->SetModelIndex()
+		automobile->fWheelAngleMul = 0.75f;
+		// Adjust col model to include suspension lines
+		mi->GetWheelPosn(0, pos);
+		float minz = pos.z + extendedLowerLimit - wheelRadius;
+		if (minz < colModel->m_boundBox.m_vecMin.z)
+			colModel->m_boundBox.m_vecMin.z = minz;
+		float radius = max(colModel->m_boundBox.m_vecMin.Magnitude(), colModel->m_boundBox.m_vecMax.Magnitude());
+		if (colModel->m_colSphere.m_fRadius < radius)
+			colModel->m_colSphere.m_fRadius = radius;
 	}
 	return OR_CONTINUE;
 }
@@ -692,31 +707,24 @@ eOpcodeResult __stdcall removeBuilding(CScript* script)
 		}
 	}
 	//of << "End" << std::endl;
-	//of << "Object Pool" << std::endl;
-	/*for (int i = 0; i < 6500; i++) {
-		mi = CModelInfo::GetModelInfo(i);
-		if (mi) {
-			of << i << "," << mi->m_nRefCount << std::endl;
-		}
-	}*/
-	/*for (auto object : CPools::ms_pObjectPool) {
+	/*of << "Object Pool" << std::endl;
+	for (auto object : CPools::ms_pObjectPool) {
 		if (models.find(object->m_nModelIndex) != models.end()) {
 
 			//auto mi = CModelInfo::GetModelInfo(object->m_nModelIndex);
-			//object->DeleteRwObject();
+			object->DeleteRwObject();
 
 			of << object->m_nModelIndex << "," << (int)object->m_nType << std::endl; //  "," << mi->m_nRefCount << std::endl;
-			//CWorld::Remove(object);
+			CWorld::Remove(object);
 			//delete(object);
 		}
-	}*/
+	}
 	//of << "End" << std::endl;
-	/*of << "Dummy Pool" << std::endl;
+	of << "Dummy Pool" << std::endl;
 	for (auto object : CPools::ms_pDummyPool) {
 		if (models.find(object->m_nModelIndex) != models.end()) {
 			of << object->m_nModelIndex << "," << (int)object->m_nType << std::endl;
 			CWorld::Remove(object);
-			CWorld:Remove
 		}
 	}
 	of << "End" << std::endl;*/
@@ -734,7 +742,7 @@ eOpcodeResult __stdcall playCharAnim(CScript *script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall addTex(CScript* script) {
+/*eOpcodeResult __stdcall addTex(CScript* script) {
 	int ref = CTxdStore::AddTxdSlot("ice");
 	CTxdStore::LoadTxd(ref, "models/ice.txd");
 	CTxdStore::AddRef(ref);
@@ -864,10 +872,52 @@ eOpcodeResult __stdcall replaceTex(CScript* script)
 				//geometry->matList.materials[i] = mat;
 			}
 		}
-	}*/
+	}
 
 	return OR_CONTINUE;
 }
+
+/*struct animEntry {
+	int timeremain = 0;
+	CVector dp{ 0.0,0.0,0.0 };
+	CVector dr{ 0.0,0.0,0.0 };
+	RwFrame *frame;
+	animEntry() {
+		timeremain = 0;
+		dp = CVector{ 0.0,0.0,0.0 };
+		dr = CVector{ 0.0,0.0,0.0 };
+
+	};
+	animEntry(int tim, CVector pos, CVector rot, RwFrame *comp) {
+		timeremain = tim;
+		dp = pos;
+		dr = rot;
+		frame = comp;
+	};
+
+};
+
+animEntry anims[10];
+
+void addCompAnim(CVehicle* vehicle, char* component, float mx, float my, float mz, float rx, float ry, float rz, int time) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		animEntry newe(time, CVector(mx, my, mz), CVector(rx, ry, rz ), frame);
+		newe.dp = CVector(mx / time, my / time, mz / time);
+		newe.dr = CVector(rx / time, ry / time, rz / time);
+		newe.timeremain = time;
+		newe.frame = frame;
+		anims[0] = (newe);
+	}
+}
+
+eOpcodeResult __stdcall addCompAnims(CScript* script)
+{
+	script->Collect(9);
+	CVehicle* vehicle = CPools::GetVehicle(Params[8].nVar);
+	addCompAnim(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar, Params[4].fVar, Params[5].fVar, Params[6].fVar, Params[7].nVar);
+	return OR_CONTINUE;
+}*/
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 {
@@ -875,7 +925,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 	{
 		DisableThreadLibraryCalls((HMODULE)hModule);
 		Params = CLEO_GetParamsAddress();
-		Opcodes::RegisterOpcode(0x3F01, setSuspensionValues);
+		Opcodes::RegisterOpcode(0x3F01, raiseFrontSuspension);
 		Opcodes::RegisterOpcode(0x3F02, getEngineStatus);
 		Opcodes::RegisterOpcode(0x3F03, turnOnEngine);
 		Opcodes::RegisterOpcode(0x3F04, getCurrentGear);
@@ -910,9 +960,31 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F33, getVelocity);
 		Opcodes::RegisterOpcode(0x3F34, getVelocityVector);
 		Opcodes::RegisterOpcode(0x3F35, setVelocityVector);
-		Opcodes::RegisterOpcode(0x3F36, addTex);
-		Opcodes::RegisterOpcode(0x3F37, replaceTex);
+		//Opcodes::RegisterOpcode(0x3F36, addTex);
+		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
+		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
 		//Reserving 0x3F18-0x3F1F for get command
+		Events::initGameEvent += [] {
+			//patch::Nop(0x58E59B, 5, true);
+			//patch::Nop(0x58E611, 5, true);
+		};
+
+		/*Events::gameProcessEvent += [] {
+			animEntry* i = &anims[0];
+
+			if (i->timeremain != 0) {
+				of << i->timeremain << " " << i->dp.x << " " << i->dp.y << " " << i->dp.z << std::endl;
+				CMatrix cmatrix(&i->frame->modelling, false);
+				CVector cpos(cmatrix.pos);
+				cmatrix.Rotate(i->dr.x, i->dr.y, i->dr.z);
+				cmatrix.pos = cpos;
+				//cmatrix.SetTranslateOnly(i->dp.x, i->dp.y, i->dp.z);
+
+
+				cmatrix.UpdateRW();
+				i->timeremain -= 1;
+			}
+		};*/
 	}
 	return TRUE;
 }
