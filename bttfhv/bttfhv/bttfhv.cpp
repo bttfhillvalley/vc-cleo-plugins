@@ -33,6 +33,7 @@ struct GameSound {
 	ISound* sound;
 	CVehicle* vehicle;
 	CVector offset{ 0.0,0.0,0.0 };
+	bool spatial;
 };
 
 map<string, GameSound> soundMap;
@@ -875,6 +876,7 @@ void __playSound(string key) {
 	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
 	cleanupSound(key);
 	soundMap[key].sound = m_soundEngine->play2D(fullpath, Params[1].nVar, false, true);
+	soundMap[key].spatial = false;
 }
 
 eOpcodeResult __stdcall playSound(CScript* script)
@@ -907,6 +909,7 @@ void __playSoundLocation(string key) {
 	soundMap[key].offset = CVector(pos.X, pos.Y, pos.Z);
 	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, Params[4].nVar, false, true);
 	soundMap[key].sound->setMinDistance(Params[5].fVar);
+	soundMap[key].spatial = true;
 }
 
 eOpcodeResult __stdcall playSoundAtLocation(CScript* script)
@@ -939,6 +942,7 @@ void __attachSoundToVehicle(string key, CVehicle* vehicle) {
 	pos.Y *= -1.0;
 	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, Params[4].nVar, false, true);
 	soundMap[key].sound->setMinDistance(Params[5].fVar);
+	soundMap[key].spatial = true;
 }
 
 eOpcodeResult __stdcall attachSoundToVehicle(CScript* script)
@@ -1067,7 +1071,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					auto itr = soundMap.begin();
 					while (itr != soundMap.end()) {
 						if (soundMap[itr->first].sound->isFinished()) {
-							of << "erasing: " << itr->first << endl;
 							itr = soundMap.erase(itr);
 							continue;
 						}
@@ -1085,7 +1088,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 							soundPos.Z = soundMap[itr->first].offset.z;
 						}
 						distance = (float)playerPos.getDistanceFrom(soundPos);
-						if (distance < 150.0f) {
+						if (distance < 150.0f || !soundMap[itr->first].spatial) {
 							soundMap[itr->first].sound->setVolume(1.0f);
 						}
 						else {
