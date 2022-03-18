@@ -1,25 +1,44 @@
 #define _USE_MATH_DEFINES
 #include "plugin.h"
-#include "CWorld.h"
+#include "irrKlang.h"
 #include <fstream>
 #include <string>
 #include <cmath>
+#include <map>
 #include <set>
 #include "VC.CLEO.h"
 #pragma comment(lib, "VC.CLEO.lib")
-#include "game_vc\CClumpModelInfo.h"
-#include "CTxdStore.h"
-#include "CPools.h"
+#include "CCamera.h"
+#include "CClumpModelInfo.h"
 #include "CFileLoader.h"
+#include "CMenuManager.h"
 #include "CModelInfo.h"
-#include "CSimpleModelInfo.h"
-#include "cHandlingDataMgr.h"
 #include "CPointLights.h"
+#include "CPools.h"
+#include "CSimpleModelInfo.h"
+#include "CTxdStore.h"
+#include "CWorld.h"
+#include "cHandlingDataMgr.h"
 #include "extensions\ScriptCommands.h"
 
+using namespace irrklang;
+using namespace plugin;
+using namespace std;
+
+ISoundEngine* m_soundEngine;
+char volume = 0;
+boolean paused = false;
+
+struct GameSound {
+	ISound* sound;
+	CVehicle* vehicle;
+	CVector offset{ 0.0,0.0,0.0 };
+};
+
+map<string, GameSound> soundMap;
 
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
-//std::ofstream of("DEBUG", std::ofstream::app);
+std::ofstream of("DEBUG", std::ofstream::app);
 
 int __cdecl GetAtomicId(RpAtomic *atomic) {
 	return *(&atomic->object.object.type + ms_atomicPluginOffset);
@@ -757,185 +776,204 @@ eOpcodeResult __stdcall playCharAnim(CScript *script)
 	return OR_CONTINUE;
 }
 
-/*eOpcodeResult __stdcall addTex(CScript* script) {
-	int ref = CTxdStore::AddTxdSlot("ice");
-	CTxdStore::LoadTxd(ref, "models/ice.txd");
-	CTxdStore::AddRef(ref);
-	return OR_CONTINUE;
-}
-
-
-RpMaterial* MaterialCallback(RpMaterial* material, void* texture) {
-
-	//RwTexture* newTexture = reinterpret_cast<RwTexture*>(texture);
-	if (material->texture) {
-		if (strcmp(material->texture->name, "stainless") == 0) {
-			std::ofstream of("DEBUG", std::ofstream::app);
-			of << material->texture->name << std::endl;
-			RwTexture* replacement = RwTextureRead("ice", NULL);
-			material->texture = replacement;
-		}
-	}
-	return material;
-}
-
-static RpAtomic* AtomicCallback(RpAtomic* atomic, void* texture) {
-	if (atomic->geometry->matList.numMaterials > 0) {
-		RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, texture);
-	}
-	return atomic;
-}
-
-
-//TEXTURESRENDER
-eOpcodeResult __stdcall oldReplaceTex(CScript* script)
-{
-	CTxdStore::PushCurrentTxd();
-	script->Collect(1);
-	RwTexture* replacement, *original;
-	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("infernus"));
-	replacement = RwTextureRead("ice", NULL);
-	if (replacement) {
-		original = RwTextureRead("stainless", NULL);
-		if (original) {
-			memcpy(original, replacement, sizeof(replacement));
-		}
-		RwTextureDestroy(replacement);
-	}
-	CTxdStore::PopCurrentTxd();
-	return OR_CONTINUE;
-}
-
-RwFrame* ListFrameNames(RwFrame* frame, void* data) {
-	std::ofstream of("DEBUG", std::ofstream::app);
-	of << GetFrameNodeName(frame) << std::endl;
-	of.close();
-	if (frame->child) {
-		RwFrame* child = frame->child;
-		do {
-			ListFrameNames(child, data);
-			child = child->next;
-		} while (child);
-	}
-
-	return frame;
-}
-
-RwObject* __cdecl SetAtomicGlow(RwObject* object, void* data)
-{
-	RpAtomic* atomic = (RpAtomic*)object;
-	RpGeometry* geometry = atomic->geometry;
-	std::ofstream of("DEBUG", std::ofstream::app);
-	of << GetFrameNodeName((RwFrame*)(atomic->object.object.parent)) << std::endl;
-	of.close();
-	RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, NULL);
-	return object;
-}
-
-eOpcodeResult __stdcall replaceTex(CScript* script)
+eOpcodeResult __stdcall loadTxdDict(CScript* script)
 {
 	script->Collect(1);
-	std::ofstream of("DEBUG", std::ofstream::out);
-
-	//of << "Finding Frame: panels" << std::endl;
-	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-	RpAtomic* atomic;
-	RpGeometry* geometry;
-	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("infernus"));
-	for (auto frame : automobile->m_aCarNodes) {
-		if (frame) {
-			RwFrameForAllObjects(frame, SetAtomicGlow, &atomic);
-		}
-	}
-	AtomicCallback(reinterpret_cast<RpAtomic*>(vehicle->m_pRwObject), NULL);
-	of.close();
-
-
-
-	/*RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "panels");
-	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("infernus"));
-	RwTexture* replacement = RwTextureRead("ice", NULL);
-	//AtomicCallback(reinterpret_cast<RpAtomic*>(vehicle->m_pRwObject), (void*)replacement);
-	//RpClumpForAllAtomics(vehicle->m_pRwClump, AtomicCallback, (void*)replacement);
-
-	if (frame) {
-		of << "Found Frame" << std::endl;
-		RpAtomic* atomic;
-		RpGeometry* geometry;
-		//RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
-		//RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, (void*)replacement);
-		//frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "door_lf_hi_ok");
-
-		geometry = atomic->geometry;
-
-		of << "Num Materials: " << geometry->matList.numMaterials << std::endl;
-		for (int i = 0; i < geometry->matList.numMaterials; i++) {
-			of << geometry->matList.materials[i]->texture->name << std::endl;
-			if (strcmp(geometry->matList.materials[i]->texture->name, "stainless") == 0) {
-				of << "replacing" << std::endl;
-				RpMaterial* mat = geometry->matList.materials[i];
-				mat->color = geometry->matList.materials[i]->color;
-				mat->pad = geometry->matList.materials[i]->pad;
-				mat->pipeline = geometry->matList.materials[i]->pipeline;
-				mat->refCount = geometry->matList.materials[i]->refCount;
-				mat->surfaceProps = geometry->matList.materials[i]->surfaceProps;
-
-				//memcpy(mat, geometry->matList.materials[i], sizeof(geometry->matList.materials[i]));
-				mat->texture = replacement;
-
-				//geometry->matList.materials[i] = mat;
-			}
-		}
-	}
-
+	char fullpath[128];
+	snprintf(fullpath, 128, "models\\%s.txd", Params[0].cVar);
+	int slot = CTxdStore::FindTxdSlot("script");
+	if (slot == -1)
+		slot = CTxdStore::AddTxdSlot("script");
+	CTxdStore::LoadTxd(slot, fullpath);
+	CTxdStore::AddRef(slot);
 	return OR_CONTINUE;
 }
 
-/*struct animEntry {
-	int timeremain = 0;
-	CVector dp{ 0.0,0.0,0.0 };
-	CVector dr{ 0.0,0.0,0.0 };
-	RwFrame *frame;
-	animEntry() {
-		timeremain = 0;
-		dp = CVector{ 0.0,0.0,0.0 };
-		dr = CVector{ 0.0,0.0,0.0 };
+// Sound
 
-	};
-	animEntry(int tim, CVector pos, CVector rot, RwFrame *comp) {
-		timeremain = tim;
-		dp = pos;
-		dr = rot;
-		frame = comp;
-	};
-
-};
-
-animEntry anims[10];
-
-void addCompAnim(CVehicle* vehicle, char* component, float mx, float my, float mz, float rx, float ry, float rz, int time) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
-	if (frame) {
-		animEntry newe(time, CVector(mx, my, mz), CVector(rx, ry, rz ), frame);
-		newe.dp = CVector(mx / time, my / time, mz / time);
-		newe.dr = CVector(rx / time, ry / time, rz / time);
-		newe.timeremain = time;
-		newe.frame = frame;
-		anims[0] = (newe);
+// Sound helper methods
+void cleanupSound(string key) {
+	if (soundMap.contains(key)) {
+		soundMap[key].sound->stop();
+		soundMap[key].sound->drop();
+		soundMap.erase(key);
 	}
 }
 
-eOpcodeResult __stdcall addCompAnims(CScript* script)
+string getKeyIndex(char* name, int index) {
+	string key(name);
+	return key + "_" + to_string(index);
+}
+
+int findEmptyIndex(char* name) {
+	string key;
+	int index = 0;
+	do {
+		key = getKeyIndex(name, ++index);
+	} while (soundMap.contains(key));
+	return index;
+}
+
+// Sound opcodes
+eOpcodeResult __stdcall stopAllSounds(CScript* script)
 {
-	script->Collect(9);
-	CVehicle* vehicle = CPools::GetVehicle(Params[8].nVar);
-	addCompAnim(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar, Params[4].fVar, Params[5].fVar, Params[6].fVar, Params[7].nVar);
+	script->Collect(0);
+	m_soundEngine->stopAllSounds();
 	return OR_CONTINUE;
-}*/
+}
+
+eOpcodeResult __stdcall stopSound(CScript* script)
+{
+	script->Collect(1);
+	string key(Params[0].cVar);
+	cleanupSound(key);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall stopSoundIndex(CScript* script)
+{
+	script->Collect(2);
+	string key = getKeyIndex(Params[0].cVar, Params[1].nVar);
+	cleanupSound(key);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isSoundPlaying(CScript* script)
+{
+	script->Collect(1);
+	string key(Params[0].cVar);
+	script->UpdateCompareFlag(soundMap.contains(key) && !soundMap[key].sound->isFinished());
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isSoundStopped(CScript* script)
+{
+	script->Collect(1);
+	string key(Params[0].cVar);
+	script->UpdateCompareFlag(!(soundMap.contains(key) && !soundMap[key].sound->isFinished()));
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isSoundPlayingIndex(CScript* script)
+{
+	script->Collect(2);
+	string key = getKeyIndex(Params[0].cVar, Params[1].nVar);
+	script->UpdateCompareFlag(soundMap.contains(key) && !soundMap[key].sound->isFinished());
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isSoundStoppedIndex(CScript* script)
+{
+	script->Collect(2);
+	string key = getKeyIndex(Params[0].cVar, Params[1].nVar);
+	script->UpdateCompareFlag(!(soundMap.contains(key) && !soundMap[key].sound->isFinished()));
+	return OR_CONTINUE;
+}
+
+void __playSound(string key) {
+	char fullpath[128];
+	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
+	cleanupSound(key);
+	soundMap[key].sound = m_soundEngine->play2D(fullpath, Params[1].nVar, false, true);
+}
+
+eOpcodeResult __stdcall playSound(CScript* script)
+{
+	script->Collect(2);
+	string key(Params[0].cVar);
+	__playSound(key);	
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall playSoundIndex(CScript* script)
+{
+	script->Collect(2);
+	int index = findEmptyIndex(Params[0].cVar);
+	string key = getKeyIndex(Params[0].cVar, index);
+	__playSound(key);
+	Params[0].nVar = index;
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+void __playSoundLocation(string key) {
+	char fullpath[128];
+	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
+	cleanupSound(key);
+	vec3df pos;	
+	pos.X = Params[1].fVar;
+	pos.Y = -1.0f * Params[2].fVar;
+	pos.Z = Params[3].fVar;
+	soundMap[key].offset = CVector(pos.X, pos.Y, pos.Z);
+	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, Params[4].nVar, false, true);
+	soundMap[key].sound->setMinDistance(Params[5].fVar);
+}
+
+eOpcodeResult __stdcall playSoundAtLocation(CScript* script)
+{
+	script->Collect(6);
+	string key(Params[0].cVar);	
+	__playSoundLocation(key);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall playSoundAtLocationIndex(CScript* script)
+{
+	script->Collect(6);
+	int index = findEmptyIndex(Params[0].cVar);
+	string key = getKeyIndex(Params[0].cVar, index);
+	__playSoundLocation(key);
+	Params[0].nVar = index;
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+void __attachSoundToVehicle(string key, CVehicle* vehicle) {
+	char fullpath[128];
+	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
+	cleanupSound(key);
+	vec3df pos;
+	soundMap[key].vehicle = vehicle;
+	soundMap[key].offset = CVector(Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	Command<Commands::GET_OFFSET_FROM_CAR_IN_WORLD_COORDS>(vehicle, soundMap[key].offset.x, soundMap[key].offset.y, soundMap[key].offset.z, &pos.X, &pos.Y, &pos.Z);
+	pos.Y *= -1.0;
+	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, Params[4].nVar, false, true);
+	soundMap[key].sound->setMinDistance(Params[5].fVar);
+}
+
+eOpcodeResult __stdcall attachSoundToVehicle(CScript* script)
+{
+	script->Collect(7);
+	int index = 0;
+	CVehicle* vehicle = CPools::GetVehicle(Params[6].nVar);
+	if (vehicle) {
+		string key(Params[0].cVar);
+		__attachSoundToVehicle(key, vehicle);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall attachSoundToVehicleIndex(CScript* script)
+{
+	script->Collect(7);
+	int index = 0;
+	CVehicle* vehicle = CPools::GetVehicle(Params[6].nVar);
+	if (vehicle) {
+		index = findEmptyIndex(Params[0].cVar);
+		string key = getKeyIndex(Params[0].cVar, index);
+		__attachSoundToVehicle(key, vehicle);
+	}
+	Params[0].nVar = index;
+	script->Store(1);
+	return OR_CONTINUE;
+}
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 {
+	CVector* pos;
+	vec3df playerPos, soundPos, dir;
+	string key;
+	float distance;
 	if (reason == DLL_PROCESS_ATTACH)
 	{
 		DisableThreadLibraryCalls((HMODULE)hModule);
@@ -976,16 +1014,90 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F34, getVelocityVector);
 		Opcodes::RegisterOpcode(0x3F35, setVelocityVector);
 		Opcodes::RegisterOpcode(0x3F36, getSteeringAngle);
+		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
+		Opcodes::RegisterOpcode(0x3F81, stopSound);
+		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
+		Opcodes::RegisterOpcode(0x3F83, isSoundStopped);
+		Opcodes::RegisterOpcode(0x3F84, playSound);
+		Opcodes::RegisterOpcode(0x3F85, playSoundAtLocation);
+		Opcodes::RegisterOpcode(0x3F86, attachSoundToVehicle);
+		Opcodes::RegisterOpcode(0x3F91, stopSoundIndex);
+		Opcodes::RegisterOpcode(0x3F92, isSoundPlayingIndex);
+		Opcodes::RegisterOpcode(0x3F93, isSoundStoppedIndex);
+		Opcodes::RegisterOpcode(0x3F94, playSoundIndex);
+		Opcodes::RegisterOpcode(0x3F95, playSoundAtLocationIndex);
+		Opcodes::RegisterOpcode(0x3F96, attachSoundToVehicleIndex);
+
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
 		//Reserving 0x3F18-0x3F1F for get command
 		Events::initGameEvent += [] {
 			//patch::Nop(0x58E59B, 5, true);
 			//patch::Nop(0x58E611, 5, true);
+			m_soundEngine = createIrrKlangDevice();
+			m_soundEngine->setRolloffFactor(1.5f);
 		};
 
-		/*Events::gameProcessEvent += [] {
-			animEntry* i = &anims[0];
+		Events::gameProcessEvent += [&] {
+			// Set volume of sound engine to match game
+			if (volume != FrontendMenuManager.field_29) {
+				volume = FrontendMenuManager.field_29;
+				m_soundEngine->setSoundVolume(volume / 127.0f);
+			}
+			if (Command<Commands::IS_PLAYER_PLAYING>(0))
+			{
+				pos = TheCamera.GetGameCamPosition();
+				playerPos.X = pos->x;
+				playerPos.Y = -1.0f * pos->y;
+				playerPos.Z = pos->z;
+				dir.X = TheCamera.up.x;
+				dir.Y = -1.0f * TheCamera.up.y;
+				dir.Z = TheCamera.up.z;
+				m_soundEngine->setListenerPosition(playerPos, dir, vec3df(0, 0, 0), vec3df(0, 0, 1));
+			}
+			if (!soundMap.empty()) {
+				if (FrontendMenuManager.m_bMenuVisible && !paused) {
+
+					for (auto const& [key, gamesound] : soundMap) {
+						gamesound.sound->setIsPaused();
+					}
+					paused = true;
+				}
+				else if (!FrontendMenuManager.m_bMenuVisible) {
+					auto itr = soundMap.begin();
+					while (itr != soundMap.end()) {
+						if (soundMap[itr->first].sound->isFinished()) {
+							of << "erasing: " << itr->first << endl;
+							itr = soundMap.erase(itr);
+							continue;
+						}
+						if (paused) {
+							soundMap[itr->first].sound->setIsPaused(false);
+						}
+						if (soundMap[itr->first].vehicle) {
+							Command<Commands::GET_OFFSET_FROM_CAR_IN_WORLD_COORDS>(soundMap[itr->first].vehicle, soundMap[itr->first].offset.x, soundMap[itr->first].offset.y, soundMap[itr->first].offset.z, &soundPos.X, &soundPos.Y, &soundPos.Z);
+							soundPos.Y *= -1.0;
+							soundMap[itr->first].sound->setPosition(soundPos);
+						}
+						else {
+							soundPos.X = soundMap[itr->first].offset.x;
+							soundPos.Y = soundMap[itr->first].offset.y;
+							soundPos.Z = soundMap[itr->first].offset.z;
+						}
+						distance = (float)playerPos.getDistanceFrom(soundPos);
+						if (distance < 150.0f) {
+							soundMap[itr->first].sound->setVolume(1.0f);
+						}
+						else {
+							soundMap[itr->first].sound->setVolume(-0.01f * distance + 2.5f);
+						}
+						++itr;
+					}
+					paused = false;
+				}
+			}
+			
+			/*animEntry* i = &anims[0];
 
 			if (i->timeremain != 0) {
 				of << i->timeremain << " " << i->dp.x << " " << i->dp.y << " " << i->dp.z << std::endl;
@@ -998,8 +1110,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
 				cmatrix.UpdateRW();
 				i->timeremain -= 1;
-			}
-		};*/
+			}*/
+		};
 	}
 	return TRUE;
 }
