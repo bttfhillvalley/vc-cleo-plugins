@@ -898,6 +898,15 @@ eOpcodeResult __stdcall playSoundIndex(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall playKeypad(CScript* script)
+{
+	script->Collect(1);
+	char fullpath[128];
+	snprintf(fullpath, 128, ".\\sound\\%d.wav", Params[0].nVar);
+	m_soundEngine->play2D(fullpath);
+	return OR_CONTINUE;
+}
+
 void __playSoundLocation(string key) {
 	char fullpath[128];
 	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
@@ -1025,6 +1034,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F84, playSound);
 		Opcodes::RegisterOpcode(0x3F85, playSoundAtLocation);
 		Opcodes::RegisterOpcode(0x3F86, attachSoundToVehicle);
+		Opcodes::RegisterOpcode(0x3F90, playKeypad);
 		Opcodes::RegisterOpcode(0x3F91, stopSoundIndex);
 		Opcodes::RegisterOpcode(0x3F92, isSoundPlayingIndex);
 		Opcodes::RegisterOpcode(0x3F93, isSoundStoppedIndex);
