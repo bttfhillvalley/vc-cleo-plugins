@@ -332,10 +332,8 @@ eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 eOpcodeResult __stdcall getCarComponentVisibility(CScript* script)
 {
 	script->Collect(2);
-	of << "Starting" << endl;
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	getVisibility(vehicle, Params[1].cVar);
-	of << visibility << endl;
 	Params[0].nVar = visibility;
 	script->Store(1);
 	return OR_CONTINUE;
