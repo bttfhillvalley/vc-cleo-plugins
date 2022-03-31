@@ -27,6 +27,7 @@ using namespace std;
 
 ISoundEngine* m_soundEngine;
 char volume = 0;
+int visibility;  // Hack for now, not sure how to pass this in as a (void*) without messing up the value
 boolean paused = false;
 
 struct GameSound {
@@ -39,7 +40,7 @@ struct GameSound {
 map<string, GameSound> soundMap;
 
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
-std::ofstream of("DEBUG", std::ofstream::app);
+//ofstream of("DEBUG", std::ofstream::app);
 
 int __cdecl GetAtomicId(RpAtomic *atomic) {
 	return *(&atomic->object.object.type + ms_atomicPluginOffset);
@@ -54,15 +55,7 @@ RwObject *__cdecl SetVehicleAtomicVisibilityCB(RwObject *rwObject, void *data) {
 }
 
 RwObject* __cdecl GetVehicleAtomicVisibilityCB(RwObject* rwObject, void* data) {
-	data = (void*)(rwObject->flags);
-	return rwObject;
-}
-
-RwObject* __cdecl TestFlags(RwObject* rwObject, void* data) {
-	if (data == (void*)(0))
-		rwObject->flags = 0;
-	else
-		rwObject->privateFlags = 0xF;
+	visibility = (int)rwObject->flags;
 	return rwObject;
 }
 
@@ -272,6 +265,13 @@ void setVisibility(CVehicle* vehicle, char* component, int visibility) {
 	}
 }
 
+void getVisibility(CVehicle* vehicle, char* component) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		RwFrameForAllObjects(frame, GetVehicleAtomicVisibilityCB, NULL);
+	}
+}
+
 void moveComponent(CVehicle* vehicle, char* component, float x, float y, float z) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	if (frame) {
@@ -326,6 +326,18 @@ eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	setVisibility(vehicle, Params[1].cVar, Params[2].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarComponentVisibility(CScript* script)
+{
+	script->Collect(2);
+	of << "Starting" << endl;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	getVisibility(vehicle, Params[1].cVar);
+	of << visibility << endl;
+	Params[0].nVar = visibility;
+	script->Store(1);
 	return OR_CONTINUE;
 }
 
@@ -446,8 +458,8 @@ eOpcodeResult __stdcall popWheelie(CScript* script)
 	if (vehicle) {
 		Command<Commands::GET_CAR_HEADING>(vehicle, &z);
 		z = radians(z);
-		x = cos(z);
-		y = sin(z);
+		x = cos(z) * 0.25f;
+		y = sin(z) * 0.25f;
 		vehicle->m_vecTurnSpeed.x = x;
 		vehicle->m_vecTurnSpeed.y = y;
 		//vehicle->m_vecFrictionTurnForce.y = x;
@@ -1027,6 +1039,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F34, getVelocityVector);
 		Opcodes::RegisterOpcode(0x3F35, setVelocityVector);
 		Opcodes::RegisterOpcode(0x3F36, getSteeringAngle);
+		Opcodes::RegisterOpcode(0x3F40, getCarComponentVisibility);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
@@ -1080,29 +1093,35 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				else if (!FrontendMenuManager.m_bMenuVisible) {
 					auto itr = soundMap.begin();
 					while (itr != soundMap.end()) {
+						// Delete sound if its finished playing
 						if (soundMap[itr->first].sound->isFinished()) {
 							itr = soundMap.erase(itr);
 							continue;
 						}
+						// Unpause sound if we're paused
 						if (paused) {
 							soundMap[itr->first].sound->setIsPaused(false);
 						}
 						if (soundMap[itr->first].vehicle) {
+							// Attach sound to vehicle
 							Command<Commands::GET_OFFSET_FROM_CAR_IN_WORLD_COORDS>(soundMap[itr->first].vehicle, soundMap[itr->first].offset.x, soundMap[itr->first].offset.y, soundMap[itr->first].offset.z, &soundPos.X, &soundPos.Y, &soundPos.Z);
 							soundPos.Y *= -1.0;
 							soundMap[itr->first].sound->setPosition(soundPos);
 						}
 						else {
+							// Set sound to specified location
 							soundPos.X = soundMap[itr->first].offset.x;
 							soundPos.Y = soundMap[itr->first].offset.y;
 							soundPos.Z = soundMap[itr->first].offset.z;
 						}
+
+						// Mute sound if > 150 units away, otherwise play at full volume
 						distance = (float)playerPos.getDistanceFrom(soundPos);
 						if (distance < 150.0f || !soundMap[itr->first].spatial) {
 							soundMap[itr->first].sound->setVolume(1.0f);
 						}
 						else {
-							soundMap[itr->first].sound->setVolume(-0.01f * distance + 2.5f);
+							soundMap[itr->first].sound->setVolume(0.0f);
 						}
 						++itr;
 					}
