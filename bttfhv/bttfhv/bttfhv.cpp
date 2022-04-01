@@ -38,6 +38,8 @@ struct GameSound {
 };
 
 map<string, GameSound> soundMap;
+map<string, set<int>> ideMap;
+map<string, set<int>*> removeObjectQueue;
 
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
 //ofstream of("DEBUG", std::ofstream::app);
@@ -478,8 +480,6 @@ eOpcodeResult __stdcall rotateCar(CScript* script)
 	return OR_CONTINUE;
 }
 
-
-
 eOpcodeResult __stdcall setRemote(CScript* script)
 {
 	script->Collect(1);
@@ -681,27 +681,31 @@ eOpcodeResult __stdcall getSteeringAngle(CScript* script)
 	return OR_CONTINUE;
 }
 
-void getModels(std::set<int>* models, char* path) {
-	std::ifstream in;
-	char fullpath[128];
-	char idepath[128];
-	snprintf(fullpath, 128, "data\\%s.dat", path);
-	plugin::config_file config(fullpath);
-	for (auto param : config.paramLines) {
-		// Only look up IDEs
-		if (param.name == "IDE") {
-			strncpy(idepath, param.asString().c_str(), 128);
-			in.open(GAME_PATH(idepath));
-			for (std::string line; getline(in, line); ) {
-				// Find actual entries
-				int end = line.find(",");
-				if (end != std::string::npos) {
-					models->emplace(std::stoi(line.substr(0, end)));
+set<int>* getModels(char* path) {
+	string key(path);
+	if (!ideMap.contains(key)) {
+		ifstream in;
+		char fullpath[128];
+		char idepath[128];
+		snprintf(fullpath, 128, "data\\%s.dat", path);
+		plugin::config_file config(fullpath);
+		for (auto param : config.paramLines) {
+			// Only look up IDEs
+			if (param.name == "IDE") {
+				strncpy(idepath, param.asString().c_str(), 128);
+				in.open(GAME_PATH(idepath));
+				for (std::string line; getline(in, line); ) {
+					// Find actual entries
+					int end = line.find(",");
+					if (end != std::string::npos) {
+						ideMap[key].emplace(stoi(line.substr(0, end)));
+					}
 				}
+				in.close();
 			}
-			in.close();
 		}
 	}
+	return &ideMap[key];
 }
 
 eOpcodeResult __stdcall createLight(CScript* script)
@@ -716,11 +720,11 @@ eOpcodeResult __stdcall createLight(CScript* script)
 // Building stuff
 eOpcodeResult __stdcall addBuilding(CScript* script)
 {
-	script->Collect(2);
-	std::set<int> models;
-	getModels(&models, Params[0].cVar);
+	script->Collect(1);
+	set<int> *models;
+	models = getModels(Params[0].cVar);
 	for (auto object : CPools::ms_pBuildingPool) {
-		if (models.find(object->m_nModelIndex) != models.end()) {
+		if (models->find(object->m_nModelIndex) != models->end()) {
 			CWorld::Add(object);
 		}
 	}
@@ -734,47 +738,38 @@ eOpcodeResult __stdcall addBuilding(CScript* script)
 
 eOpcodeResult __stdcall removeBuilding(CScript* script)
 {
-	script->Collect(2);
-	std::set<int> models;
-	//std::ofstream of(Params[0].cVar, std::ofstream::out);
-	//CSimpleModelInfo* mi;
-	getModels(&models, Params[0].cVar);
-	//of << "Models Found" << std::endl;
-	//for (auto i : models) {
-	//	of << i << std::endl;
-	//}
-	//of << "End" << std::endl;
-	//of << "Building Pool" << std::endl;
+	script->Collect(1);
+	set<int> *models;
+	models = getModels(Params[0].cVar);
 	for (auto object : CPools::ms_pBuildingPool) {
-		if (models.find(object->m_nModelIndex) != models.end()) {
+		if (models->find(object->m_nModelIndex) != models->end()) {
 			//of << object->m_nModelIndex << "," << (int)object->m_nType << std::endl;
 			CWorld::Remove(object);
 		}
 	}
-	//of << "End" << std::endl;
-	/*of << "Object Pool" << std::endl;
-	for (auto object : CPools::ms_pObjectPool) {
-		if (models.find(object->m_nModelIndex) != models.end()) {
 
-			//auto mi = CModelInfo::GetModelInfo(object->m_nModelIndex);
-			object->DeleteRwObject();
+	return OR_CONTINUE;
+}
 
-			of << object->m_nModelIndex << "," << (int)object->m_nType << std::endl; //  "," << mi->m_nRefCount << std::endl;
-			CWorld::Remove(object);
-			//delete(object);
-		}
+eOpcodeResult __stdcall addObjects(CScript* script)
+{
+	script->Collect(1);
+	string key(Params[0].cVar);
+	if (removeObjectQueue.contains(key)) {
+		removeObjectQueue.erase(key);
 	}
-	//of << "End" << std::endl;
-	of << "Dummy Pool" << std::endl;
-	for (auto object : CPools::ms_pDummyPool) {
-		if (models.find(object->m_nModelIndex) != models.end()) {
-			of << object->m_nModelIndex << "," << (int)object->m_nType << std::endl;
-			CWorld::Remove(object);
-		}
-	}
-	of << "End" << std::endl;*/
-	//of.close();
+	return OR_CONTINUE;
+}
 
+eOpcodeResult __stdcall removeObjects(CScript* script)
+{
+	script->Collect(1);
+	set<int>* models;
+	models = getModels(Params[0].cVar);
+	string key(Params[0].cVar);
+	if (!removeObjectQueue.contains(key)) {
+		removeObjectQueue[key] = models;
+	}
 	return OR_CONTINUE;
 }
 
@@ -1037,6 +1032,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F34, getVelocityVector);
 		Opcodes::RegisterOpcode(0x3F35, setVelocityVector);
 		Opcodes::RegisterOpcode(0x3F36, getSteeringAngle);
+		Opcodes::RegisterOpcode(0x3F37, addObjects);
+		Opcodes::RegisterOpcode(0x3F38, removeObjects);
 		Opcodes::RegisterOpcode(0x3F40, getCarComponentVisibility);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
@@ -1127,6 +1124,20 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				}
 			}
 			
+			// Removes dynamically created objects.  Has to be here because game script tick causes them to flash briefly
+			for (auto item : removeObjectQueue) {
+				auto models = item.second;
+				for (auto object : CPools::ms_pObjectPool) {
+					if (models->find(object->m_nModelIndex) != models->end()) {
+						CWorld::Remove(object);
+					}
+				}
+				for (auto object : CPools::ms_pDummyPool) {
+					if (models->find(object->m_nModelIndex) != models->end()) {
+						CWorld::Remove(object);
+					}
+				}
+			}
 			/*animEntry* i = &anims[0];
 
 			if (i->timeremain != 0) {
