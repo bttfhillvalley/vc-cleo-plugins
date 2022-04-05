@@ -9,6 +9,7 @@
 #include "VC.CLEO.h"
 #pragma comment(lib, "VC.CLEO.lib")
 #include "CCamera.h"
+#include "CClock.h"
 #include "CClumpModelInfo.h"
 #include "CFileLoader.h"
 #include "CMenuManager.h"
@@ -452,14 +453,14 @@ eOpcodeResult __stdcall setCarOrientation(CScript* script)
 
 eOpcodeResult __stdcall popWheelie(CScript* script)
 {
-	script->Collect(1);
+	script->Collect(2);
 	float x, y, z;
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	if (vehicle) {
 		Command<Commands::GET_CAR_HEADING>(vehicle, &z);
 		z = radians(z);
-		x = cos(z) * 0.25f;
-		y = sin(z) * 0.25f;
+		x = cos(z) * Params[1].fVar;
+		y = sin(z) * Params[1].fVar;
 		vehicle->m_vecTurnSpeed.x = x;
 		vehicle->m_vecTurnSpeed.y = y;
 		//vehicle->m_vecFrictionTurnForce.y = x;
@@ -1058,6 +1059,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			//patch::Nop(0x58E611, 5, true);
 			m_soundEngine = createIrrKlangDevice();
 			m_soundEngine->setRolloffFactor(1.5f);
+			//CClock::ms_nMillisecondsPerGameMinute = 60000;
 		};
 
 		Events::gameProcessEvent += [&] {
