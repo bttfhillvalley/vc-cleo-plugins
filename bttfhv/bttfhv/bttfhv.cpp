@@ -424,6 +424,18 @@ eOpcodeResult __stdcall rotateCarComponentIndex(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall rotateBonnet(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		automobile->OpenDoor(CAR_BONNET, BONNET, Params[1].fVar);
+	}
+	return OR_CONTINUE;
+}
+
+
 eOpcodeResult __stdcall getCarOrientation(CScript* script)
 {
 	script->Collect(1);
@@ -534,13 +546,25 @@ eOpcodeResult __stdcall inRemote(CScript* script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall applyForce(CScript* script)
+eOpcodeResult __stdcall applyForwardForce(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 
 	if (vehicle) {
 		CVector force = vehicle->m_placement.up * Params[1].fVar;
+		vehicle->ApplyMoveForce(force.x, force.y, force.z);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall applyUpwardForce(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+	if (vehicle) {
+		CVector force = vehicle->m_placement.at * Params[1].fVar;
 		vehicle->ApplyMoveForce(force.x, force.y, force.z);
 	}
 	return OR_CONTINUE;
@@ -889,7 +913,7 @@ eOpcodeResult __stdcall playSound(CScript* script)
 {
 	script->Collect(2);
 	string key(Params[0].cVar);
-	__playSound(key);	
+	__playSound(key);
 	return OR_CONTINUE;
 }
 
@@ -917,7 +941,7 @@ void __playSoundLocation(string key) {
 	char fullpath[128];
 	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
 	cleanupSound(key);
-	vec3df pos;	
+	vec3df pos;
 	pos.X = Params[1].fVar;
 	pos.Y = -1.0f * Params[2].fVar;
 	pos.Z = Params[3].fVar;
@@ -930,7 +954,7 @@ void __playSoundLocation(string key) {
 eOpcodeResult __stdcall playSoundAtLocation(CScript* script)
 {
 	script->Collect(6);
-	string key(Params[0].cVar);	
+	string key(Params[0].cVar);
 	__playSoundLocation(key);
 	return OR_CONTINUE;
 }
@@ -965,8 +989,9 @@ eOpcodeResult __stdcall attachSoundToVehicle(CScript* script)
 	script->Collect(7);
 	int index = 0;
 	CVehicle* vehicle = CPools::GetVehicle(Params[6].nVar);
+
 	if (vehicle) {
-		string key(Params[0].cVar);
+		string key= getKeyIndex(Params[0].cVar, Params[6].nVar);
 		__attachSoundToVehicle(key, vehicle);
 	}
 	return OR_CONTINUE;
@@ -1016,16 +1041,19 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F17, rotateCarComponentIndex);
 		Opcodes::RegisterOpcode(0x3F18, setCarComponentGlow);
 		Opcodes::RegisterOpcode(0x3F19, setCarComponentGlowIndex);
+		Opcodes::RegisterOpcode(0x3F1A, rotateBonnet);
+
 		Opcodes::RegisterOpcode(0x3F20, getCarOrientation);
 		Opcodes::RegisterOpcode(0x3F21, setCarOrientation);
 		Opcodes::RegisterOpcode(0x3F22, popWheelie);
 		Opcodes::RegisterOpcode(0x3F23, setRemote);
 		Opcodes::RegisterOpcode(0x3F24, removeRemote);
-		Opcodes::RegisterOpcode(0x3F25, applyForce);
-		Opcodes::RegisterOpcode(0x3F26, getWheelStatus);
-		Opcodes::RegisterOpcode(0x3F27, setWheelStatus);
-		Opcodes::RegisterOpcode(0x3F28, createLight);
-		Opcodes::RegisterOpcode(0x3F29, inRemote);
+		Opcodes::RegisterOpcode(0x3F25, applyForwardForce);
+		Opcodes::RegisterOpcode(0x3F26, applyUpwardForce);
+		Opcodes::RegisterOpcode(0x3F27, getWheelStatus);
+		Opcodes::RegisterOpcode(0x3F28, setWheelStatus);
+		Opcodes::RegisterOpcode(0x3F29, createLight);
+		Opcodes::RegisterOpcode(0x3F2A, inRemote);
 		Opcodes::RegisterOpcode(0x3F30, rotateCar);
 		Opcodes::RegisterOpcode(0x3F31, getRotationMatrix);
 		Opcodes::RegisterOpcode(0x3F32, setRotationMatrix);
@@ -1125,7 +1153,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					paused = false;
 				}
 			}
-			
+
 			// Removes dynamically created objects.  Has to be here because game script tick causes them to flash briefly
 			for (auto item : removeObjectQueue) {
 				auto models = item.second;
