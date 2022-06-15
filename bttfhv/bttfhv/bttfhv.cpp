@@ -742,6 +742,132 @@ eOpcodeResult __stdcall createLight(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall addTex(CScript* script) {
+	int ref = CTxdStore::AddTxdSlot("ice");
+	CTxdStore::LoadTxd(ref, "models/ice.txd");
+	CTxdStore::AddRef(ref);
+	return OR_CONTINUE;
+}
+
+
+RpMaterial* MaterialCallback(RpMaterial* material, void* texture) {
+
+	//RwTexture* newTexture = reinterpret_cast<RwTexture*>(texture);
+	if (material->texture) {
+		if (strcmp(material->texture->name, "stainless") == 0) {
+			RwTexture* replacement = RwTextureRead("ice", NULL);
+
+			material->texture = replacement;
+		}
+	}
+	return material;
+}
+
+static RpAtomic* AtomicCallback(RpAtomic* atomic, void* texture) {
+	if (atomic->geometry->matList.numMaterials > 0) {
+		RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, texture);
+	}
+	return atomic;
+}
+
+RwFrame* ListFrameNames(RwFrame* frame, void* data) {
+	if (frame->child) {
+		RwFrame* child = frame->child;
+		do {
+			ListFrameNames(child, data);
+			child = child->next;
+		} while (child);
+	}
+
+	return frame;
+}
+
+RwObject* __cdecl SetAtomicGlow(RwObject* object, void* data)
+{
+	RpAtomic* atomic = (RpAtomic*)object;
+	RpGeometry* geometry = atomic->geometry;
+	RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, NULL);
+	return object;
+}
+
+
+//TEXTURESRENDER
+
+eOpcodeResult __stdcall oldReplaceTex(CScript* script)
+{
+	CTxdStore::PushCurrentTxd();
+	script->Collect(5);
+	RwTexture *replacement, *original;
+	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot(Params[1].cVar));
+	char texture[256];
+	sprintf(texture, "%s%d", Params[3].cVar, Params[4].nVar);
+	replacement = RwTextureRead(texture, NULL);
+	if (replacement) {
+		original = RwTextureRead(Params[2].cVar, NULL);
+		if (original) {
+			memcpy(original, replacement, sizeof(replacement));
+		}
+		RwTextureDestroy(replacement);
+	}
+	CTxdStore::PopCurrentTxd();
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall replaceTex(CScript* script)
+{
+	CTxdStore::PushCurrentTxd();
+	script->Collect(1);
+	std::ofstream of("DEBUG", std::ofstream::out);
+
+	of << "Finding Frame: panels" << std::endl;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	/*CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+	RpAtomic* atomic;
+	RpGeometry* geometry;
+	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("infernus"));
+	for (auto frame : automobile->m_aCarNodes) {
+		if (frame) {
+			RwFrameForAllObjects(frame, SetAtomicGlow, &atomic);
+		}
+	}
+	AtomicCallback(reinterpret_cast<RpAtomic*>(vehicle->m_pRwObject), NULL);
+	of.close();*/
+	if (vehicle) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "panels");
+		//AtomicCallback(reinterpret_cast<RpAtomic*>(vehicle->m_pRwObject), (void*)replacement);
+		//RpClumpForAllAtomics(vehicle->m_pRwClump, AtomicCallback, (void*)replacement);
+		if (frame) {
+			CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("infernus"));
+			RwTexture* replacement = RwTextureRead("ice", NULL);
+			of << "Found Frame" << std::endl;
+			RpAtomic* atomic;
+			RpGeometry* geometry;
+			RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
+			RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, (void*)replacement);
+			//frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "door_lf_hi_ok");
+			/*geometry = atomic->geometry;
+			of << "Num Materials: " << geometry->matList.numMaterials << std::endl;
+			for (int i = 0; i < geometry->matList.numMaterials; i++) {
+				of << geometry->matList.materials[i]->texture->name << std::endl;
+				if (strcmp(geometry->matList.materials[i]->texture->name, "stainless") == 0) {
+					of << "replacing" << std::endl;
+					RpMaterial* mat = geometry->matList.materials[i];
+					mat->color = geometry->matList.materials[i]->color;
+					mat->pad = geometry->matList.materials[i]->pad;
+					mat->pipeline = geometry->matList.materials[i]->pipeline;
+					mat->refCount = geometry->matList.materials[i]->refCount;
+					mat->surfaceProps = geometry->matList.materials[i]->surfaceProps;
+					//memcpy(mat, geometry->matList.materials[i], sizeof(geometry->matList.materials[i]));
+					mat->texture = replacement;
+					//geometry->matList.materials[i] = mat;
+				}
+			}*/
+		}
+	}
+	CTxdStore::PopCurrentTxd();
+	return OR_CONTINUE;
+}
+
 // Building stuff
 eOpcodeResult __stdcall addBuilding(CScript* script)
 {
@@ -1031,6 +1157,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F07, playCharAnim);
 		Opcodes::RegisterOpcode(0x3F08, addBuilding);
 		Opcodes::RegisterOpcode(0x3F09, removeBuilding);
+		Opcodes::RegisterOpcode(0x3F0A, oldReplaceTex);
+		Opcodes::RegisterOpcode(0x3F0B, replaceTex);
 		Opcodes::RegisterOpcode(0x3F10, setCarComponentVisibility);
 		Opcodes::RegisterOpcode(0x3F11, setCarComponentIndexVisibility);
 		Opcodes::RegisterOpcode(0x3F12, setCarComponentAlpha);
@@ -1042,7 +1170,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F18, setCarComponentGlow);
 		Opcodes::RegisterOpcode(0x3F19, setCarComponentGlowIndex);
 		Opcodes::RegisterOpcode(0x3F1A, rotateBonnet);
-
 		Opcodes::RegisterOpcode(0x3F20, getCarOrientation);
 		Opcodes::RegisterOpcode(0x3F21, setCarOrientation);
 		Opcodes::RegisterOpcode(0x3F22, popWheelie);
