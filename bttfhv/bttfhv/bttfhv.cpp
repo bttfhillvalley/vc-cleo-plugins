@@ -1,6 +1,7 @@
 #define _USE_MATH_DEFINES
 #include "plugin.h"
 #include "irrKlang.h"
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <cmath>
@@ -12,24 +13,33 @@
 #include "CClock.h"
 #include "CClumpModelInfo.h"
 #include "CFileLoader.h"
+#include "CFileMgr.h"
 #include "CMenuManager.h"
 #include "CModelInfo.h"
 #include "CPointLights.h"
 #include "CPools.h"
 #include "CSimpleModelInfo.h"
+#include "CTimer.h"
 #include "CTxdStore.h"
 #include "CWorld.h"
 #include "cHandlingDataMgr.h"
+#include "eEntityStatus.h"
 #include "extensions\ScriptCommands.h"
+
+#define GRAVITY (0.008f)
+#define Clamp(v, low, high) ((v) < (low) ? (low) : (v) > (high) ? (high) : (v))
+#define SQR(x) ((x) * (x))
 
 using namespace irrklang;
 using namespace plugin;
 using namespace std;
 
 ISoundEngine* m_soundEngine;
+bool loadedSound = false;
 char volume = 0;
 int visibility;  // Hack for now, not sure how to pass this in as a (void*) without messing up the value
 boolean paused = false;
+unsigned char work_buff[55000];
 
 struct GameSound {
 	ISound* sound;
@@ -38,9 +48,21 @@ struct GameSound {
 	bool spatial;
 };
 
+struct CarAttachments {
+	CVehicle* vehicle;
+	CVehicle* attached;
+	CVector offset{ 0.0, 0.0, 0.0 };
+	// TODO Rotation
+};
+
 map<string, GameSound> soundMap;
+map<int, CarAttachments> carAttachments;
 map<string, set<int>> ideMap;
 map<string, set<int>*> removeObjectQueue;
+map<string, tHandlingData*> handlingData;
+map<string, tFlyingHandlingData*> flyingHandlingData;
+map<string, tBoatHandlingData*> boatHandlingData;
+map<string, tBikeHandlingData*> bikeHandlingData;
 
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
 //ofstream of("DEBUG", std::ofstream::app);
@@ -49,7 +71,44 @@ int __cdecl GetAtomicId(RpAtomic *atomic) {
 	return *(&atomic->object.object.type + ms_atomicPluginOffset);
 }
 
-RwObject *__cdecl SetVehicleAtomicVisibilityCB(RwObject *rwObject, void *data) {
+RpMaterial* __cdecl SetAmbientCB(RpMaterial* material, void* data)
+{
+	RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
+	if (data == (void*)(0))
+		properties->ambient = 0.5f;
+	else
+		properties->ambient = 5.0f;
+	return material;
+}
+
+RpMaterial* SetRedCB(RpMaterial* material, void* data)
+{
+	unsigned int value = reinterpret_cast<unsigned int>(data);
+	RwRGBA* col = (RwRGBA*)RpMaterialGetColor(material);	// get rid of const
+	RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
+	col->red = value;
+	return material;
+}
+
+RpMaterial* SetGreenCB(RpMaterial* material, void* data)
+{
+	unsigned int value = reinterpret_cast<unsigned int>(data);
+	RwRGBA* col = (RwRGBA*)RpMaterialGetColor(material);	// get rid of const
+	RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
+	col->green = value;
+	return material;
+}
+
+RpMaterial* SetBlueCB(RpMaterial* material, void* data)
+{
+	unsigned int value = reinterpret_cast<unsigned int>(data);
+	RwRGBA* col = (RwRGBA*)RpMaterialGetColor(material);	// get rid of const
+	RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
+	col->blue = value;
+	return material;
+}
+
+RwObject *__cdecl SetAtomicVisibilityCB(RwObject *rwObject, void *data) {
 	if (data == (void *)(0))
 		rwObject->flags = 0;
 	else
@@ -57,12 +116,12 @@ RwObject *__cdecl SetVehicleAtomicVisibilityCB(RwObject *rwObject, void *data) {
 	return rwObject;
 }
 
-RwObject* __cdecl GetVehicleAtomicVisibilityCB(RwObject* rwObject, void* data) {
+RwObject* __cdecl GetAtomicVisibilityCB(RwObject* rwObject, void* data) {
 	visibility = (int)rwObject->flags;
 	return rwObject;
 }
 
-RwObject *__cdecl GetVehicleAtomicObjectCB(RwObject* object, void* data)
+RwObject *__cdecl GetAtomicObjectCB(RwObject* object, void* data)
 {
 	*(RpAtomic**)data = (RpAtomic*)object;
 	return object;
@@ -76,8 +135,110 @@ float degrees(float radians) {
 	return (float)(radians * 180.0 / M_PI);
 }
 
+inline float DotProduct(const CVector& v1, const CVector& v2)
+{
+	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
 tScriptVar *Params;
 using namespace plugin;
+
+void HoverControl(CVehicle* vehicle)
+{
+	if (vehicle->m_pFlyingHandling == nullptr)
+		return;
+	float fThrust = 0.0f;
+	float fPitch = 0.0f;
+	float fRoll = 0.0f;
+	float fYaw = 0.0f;
+	tFlyingHandlingData* flyingHandling = vehicle->m_pFlyingHandling;
+	float rm = pow(flyingHandling->fMoveRes, CTimer::ms_fTimeStep);
+	if (vehicle->m_nState != 0 && vehicle->m_nState != 10) {
+		rm *= 0.97f;
+	}
+	vehicle->m_vecMoveSpeed *= rm;
+	float fUpSpeed = DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
+	if (vehicle->m_nState == 0 || vehicle->m_nState == 10) {
+		fThrust = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
+		fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
+		if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
+			fThrust = CPad::GetPad(0)->GetCarGunUpDown() / 128.0f;
+		}
+		else if(abs(CPad::GetPad(0)->LookAroundUpDown()) > 1.0f) {
+			fPitch = CPad::GetPad(0)->LookAroundUpDown() / 128.0f;
+		}
+		fRoll = -CPad::GetPad(0)->GetSteeringLeftRight() / 128.0f;
+		fYaw = CPad::GetPad(0)->GetCarGunLeftRight() / 128.0f;
+	}
+	else {
+		CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+		fThrust = -0.1f;
+		fYaw = 0.0f;
+		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
+		fRoll = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.right), -0.1f, 0.1f);
+	}
+	if (fThrust < 0.0f)
+		fThrust *= 2.0f;
+	fThrust = flyingHandling->fThrust * fThrust + 0.95f;
+	fThrust -= flyingHandling->fThrustFallOff * fUpSpeed;
+	if (vehicle->GetPosition().z > 1000.0f)
+		fThrust *= 10.0f / (vehicle->GetPosition().z - 70.0f);
+	vehicle->ApplyMoveForce(GRAVITY * vehicle->m_placement.at * fThrust * vehicle->m_fMass * CTimer::ms_fTimeStep);
+
+	if (vehicle->m_placement.at.z > 0.0f) {
+		float upRight = Clamp(vehicle->m_placement.right.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
+		float upImpulseRight = -upRight * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseRight * vehicle->m_placement.at, vehicle->m_placement.right);
+
+		float upFwd = Clamp(vehicle->m_placement.up.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
+		float upImpulseFwd = -upFwd * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseFwd * vehicle->m_placement.at, vehicle->m_placement.up);
+	}
+	else {
+		float upRight = vehicle->m_placement.right.z < 0.0f ? -flyingHandling->fFormLift : flyingHandling->fFormLift;
+		float upImpulseRight = -upRight * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseRight * vehicle->m_placement.at, vehicle->m_placement.right);
+
+		float upFwd = vehicle->m_placement.up.z < 0.0f ? -flyingHandling->fFormLift : flyingHandling->fFormLift;
+		float upImpulseFwd = -upFwd * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseFwd * vehicle->m_placement.at, vehicle->m_placement.up);
+	}
+
+	vehicle->ApplyTurnForce(fPitch * vehicle->m_placement.at * flyingHandling->fPitch * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.up);
+	vehicle->ApplyTurnForce(fRoll * vehicle->m_placement.at * flyingHandling->fRoll * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
+
+	float fSideSpeed = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.right);
+	float fSideSlipAccel = flyingHandling->fSideSlip * fSideSpeed * abs(fSideSpeed);
+	vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.right * fSideSlipAccel * CTimer::ms_fTimeStep);
+	float fYawAccel = flyingHandling->fYawStab * fSideSpeed * abs(fSideSpeed) + flyingHandling->fYaw * fYaw;
+	vehicle->ApplyTurnForce(fYawAccel * vehicle->m_placement.right * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, -vehicle->m_placement.up);
+	vehicle->ApplyTurnForce(fYaw * vehicle->m_placement.up * flyingHandling->fYaw * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
+
+	float rX = pow(flyingHandling->vecTurnRes.x, CTimer::ms_fTimeStep);
+	float rY = pow(flyingHandling->vecTurnRes.y, CTimer::ms_fTimeStep);
+	float rZ = pow(flyingHandling->vecTurnRes.z, CTimer::ms_fTimeStep);
+	CVector vecTurnSpeed = Multiply3x3(vehicle->m_vecTurnSpeed, vehicle->m_placement);
+	float fResistanceMultiplier = powf(1.0f / (flyingHandling->vecSpeedRes.z * SQR(vecTurnSpeed.z) + 1.0f) * rZ, CTimer::ms_fTimeStep);
+	float fResistance = vecTurnSpeed.z * fResistanceMultiplier - vecTurnSpeed.z;
+	vecTurnSpeed.x *= rX;
+	vecTurnSpeed.y *= rY;
+	vecTurnSpeed.z *= fResistanceMultiplier;
+	vehicle->m_vecTurnSpeed = Multiply3x3(vehicle->m_placement, vecTurnSpeed);
+	vehicle->ApplyTurnForce(-vehicle->m_placement.right * fResistance * vehicle->m_fTurnMass, vehicle->m_placement.up + Multiply3x3(vehicle->m_placement, vehicle->m_vecCentreOfMass));
+}
+
+bool isPlayerInCar(CVehicle* vehicle) {
+	CPlayerInfo player = CWorld::Players[CWorld::PlayerInFocus];
+	if (player.IsPlayerInRemoteMode()) {
+		return vehicle->m_nState == STATUS_PLAYER_REMOTE;
+	}
+	return player.m_pPed->m_bInVehicle && player.m_pPed->m_pVehicle == vehicle;
+}
+
+bool isPlayerInModel(int model) {
+	CPlayerInfo player = CWorld::Players[CWorld::PlayerInFocus];
+	return player.m_pPed->m_bInVehicle && player.m_pPed->m_pVehicle->m_nModelIndex == model;
+}
 
 eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 {
@@ -151,6 +312,29 @@ eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall updateHandling(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		CVehicleModelInfo* modelInfo = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehicle->m_nModelIndex));
+
+		string name(modelInfo->m_szName);
+		if (!name.empty()) {
+			if (handlingData.contains(name)) {
+				vehicle->m_pHandlingData = handlingData[name];
+				automobile->SetupSuspensionLines();
+			}
+			if (flyingHandlingData.contains(name)) {
+				vehicle->m_pFlyingHandling = flyingHandlingData[name];
+			}
+		}
+	}
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall turnOnEngine(CScript* script)
 {
 	script->Collect(1);
@@ -169,7 +353,7 @@ eOpcodeResult __stdcall getEngineStatus(CScript* script)
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	int status = 0;
 	if (vehicle) {
-		status = vehicle->m_nVehicleFlags.bEngineOn;
+		status = vehicle->m_nState == 0 || vehicle->m_nState == 10;
 	}
 	Params[0].nVar = status;
 	script->Store(1);
@@ -193,30 +377,8 @@ eOpcodeResult __stdcall setHover(CScript* script)
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	if (vehicle) {
 		if (Params[1].nVar == 1) {
-			CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-			// TODO: Load per vehicle configuration from a file.
-			vehicle->FlyingControl(2);
-			vehicle->m_pFlyingHandling->fThrust = 0.50f;
-			vehicle->m_pFlyingHandling->fThrustFallOff = 5.0f;
-			vehicle->m_pFlyingHandling->fYaw = -0.001f;
-			vehicle->m_pFlyingHandling->fYawStab = 0.0f;
-			vehicle->m_pFlyingHandling->fSideSlip = 0.1f;
-			vehicle->m_pFlyingHandling->fRoll = 0.0065f;
-			vehicle->m_pFlyingHandling->fRollStab = 0.0f;
-			vehicle->m_pFlyingHandling->fPitch = 0.0035f;
-			vehicle->m_pFlyingHandling->fPitchStab = 0.0f;
-			vehicle->m_pFlyingHandling->fFormLift = 0.0f;
-			vehicle->m_pFlyingHandling->fAttackLift = 0.0f;
-			vehicle->m_pFlyingHandling->fMoveRes = 0.997f;
-			vehicle->m_pFlyingHandling->vecTurnRes.x = 0.9f;
-			vehicle->m_pFlyingHandling->vecTurnRes.y = 0.9f;
-			vehicle->m_pFlyingHandling->vecTurnRes.z = 0.99f;
-			vehicle->m_pFlyingHandling->vecSpeedRes.x = 0.0f;
-			vehicle->m_pFlyingHandling->vecSpeedRes.y = 0.0f;
-			vehicle->m_pFlyingHandling->vecSpeedRes.z = 0.0f;
-
-			CMatrix mat;
-			CVector pos;
+			HoverControl(vehicle);
+			//vehicle->FlyingControl(2);
 
 			/*//automobile->DoHoverSuspensionRatios();
 			mat.Attach(RwFrameGetMatrix(automobile->m_aCarNodes[CAR_WHEEL_RB]), false);
@@ -242,7 +404,8 @@ eOpcodeResult __stdcall setHover(CScript* script)
 		}
 		else
 		{
-			vehicle->FlyingControl(1);
+			// Do nothing
+
 		}
 	}
 	return OR_CONTINUE;
@@ -259,24 +422,123 @@ eOpcodeResult __stdcall isDoorOpen(CScript* script) {
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall getDoorAngle(CScript* script) {
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		Params[0].fVar = degrees(automobile->m_aDoors[Params[1].nVar].fAngle);
+		script->Store(1);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getWheelAngle(CScript* script) {
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		for (int n = 0; n < 4; n++) {
+			Params[n].fVar = degrees(automobile->fWheelRot[n]);
+		}
+		script->Store(4);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setWheelAngle(CScript* script) {
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		for (int n = 0; n < 4; n++) {
+			automobile->fWheelRot[n] = radians(Params[n+1].fVar);
+		}
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getWheelSpeed(CScript* script) {
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		for (int n = 0; n < 4; n++) {
+			Params[n].fVar = automobile->fWheelSpeed[n];
+		}
+		script->Store(4);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setWheelSpeed(CScript* script) {
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		for (int n = 0; n < 4; n++) {
+			automobile->fWheelSpeed[n] =Params[n + 1].fVar;
+		}
+	}
+	return OR_CONTINUE;
+}
+
+
+eOpcodeResult __stdcall getDriveWheelsOnGround(CScript* script) {
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		Params[0].nVar = (int)automobile->nRearWheelsOnGround;
+		script->Store(1);
+	}
+	return OR_CONTINUE;
+}
+
+bool wheelsOnGround(int vehiclePointer) {
+	CVehicle* vehicle = CPools::GetVehicle(vehiclePointer);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		return automobile->nWheelsOnGround > 0;
+	}
+	return false;
+}
+
+eOpcodeResult __stdcall isWheelsOnGround(CScript* script) {
+	script->Collect(1);
+	script->UpdateCompareFlag(wheelsOnGround(Params[0].nVar));
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isWheelsNotOnGround(CScript* script) {
+	script->Collect(1);
+	script->UpdateCompareFlag(!wheelsOnGround(Params[0].nVar));
+	return OR_CONTINUE;
+}
+
 // Car stuff
 // Helper methods
-void setVisibility(CVehicle* vehicle, char* component, int visibility) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+void setVisibility(CEntity* model, char* component, int visible) {
+	visibility = 0;
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
-		RwFrameForAllObjects(frame, SetVehicleAtomicVisibilityCB, (void*)visibility);
+		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, NULL);
+		if (visible != visibility) {
+			RwFrameForAllObjects(frame, SetAtomicVisibilityCB, (void*)visible);
+		}
 	}
 }
 
-void getVisibility(CVehicle* vehicle, char* component) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+void getVisibility(CEntity* model, char* component) {
+	visibility = 0;
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
-		RwFrameForAllObjects(frame, GetVehicleAtomicVisibilityCB, NULL);
+		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, NULL);
 	}
 }
 
-void moveComponent(CVehicle* vehicle, char* component, float x, float y, float z) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+void moveComponent(CEntity* model, char* component, float x, float y, float z) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
 		CMatrix cmmatrix(&frame->modelling, false);
 		cmmatrix.SetTranslateOnly(x, y, z);
@@ -284,17 +546,8 @@ void moveComponent(CVehicle* vehicle, char* component, float x, float y, float z
 	}
 }
 
-void setAlpha(CVehicle* vehicle, char* component, int alpha) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
-	if (frame) {
-		RpAtomic* atomic;
-		RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
-		vehicle->SetComponentAtomicAlpha(atomic, alpha);
-	}
-}
-
-void rotateComponent(CVehicle* vehicle, char* component, float rx, float ry, float rz) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+void rotateComponent(CEntity* model, char* component, float rx, float ry, float rz) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
 		CMatrix cmatrix(&frame->modelling, false);
 		CVector cpos(cmatrix.pos);
@@ -304,26 +557,114 @@ void rotateComponent(CVehicle* vehicle, char* component, float rx, float ry, flo
 	}
 }
 
+void setColor(CVehicle* vehicle, char* component, int red, int green, int blue) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		RpAtomic* atomic;
+		RpGeometry* geometry;
+		RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
+		geometry = atomic->geometry;
+		RpGeometryForAllMaterials(geometry, SetRedCB, (void*)red);
+		RpGeometryForAllMaterials(geometry, SetGreenCB, (void*)green);
+		RpGeometryForAllMaterials(geometry, SetBlueCB, (void*)blue);
+	}
+}
+
+void setAlpha(CVehicle* vehicle, char* component, int alpha) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	if (frame) {
+		RpAtomic* atomic;
+		RpGeometry* geometry;
+		RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
+		geometry = atomic->geometry;
+		vehicle->SetComponentAtomicAlpha(atomic, alpha);
+		RwFrameForAllObjects(frame, SetAtomicVisibilityCB, (void*)alpha);
+	}
+}
+
+RwUInt8 getAlpha(CVehicle* vehicle, char* component) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+	RwUInt8 alpha = 0;
+	if (frame) {
+		RpAtomic* atomic;
+		RpGeometry* geometry;
+		RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
+		geometry = atomic->geometry;
+		alpha = atomic->geometry->matList.materials[0]->color.alpha;
+	}
+	return alpha;
+}
+
+void fadeAlpha(CVehicle* vehicle, char* component, int target, int fade) {
+	int alpha = getAlpha(vehicle, component);
+	target = max(0, target);
+	target = min(target, 255);
+	if (alpha > target) {
+		alpha -= fade;
+		alpha = max(alpha, target);
+	}
+	else if (alpha < target) {
+		alpha += fade;
+		alpha = min(alpha, target);
+	}
+	setAlpha(vehicle, component, alpha);
+}
+
 void setGlow(CVehicle* vehicle, char* component, int glow) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	if (frame) {
 		RpAtomic* atomic;
 		RpGeometry* geometry;
-		RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
+		RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
 		geometry = atomic->geometry;
-		//geometry->matList.materials[0]->texture->name
-		if (glow == 0) {
-			geometry->flags &= 0xF7;  // Turn off Prelit
-			geometry->flags |= 0x20;  // Turn on Light
-		}
-		else {
-			geometry->flags |= 0x8;  // Turn on Prelit
-			geometry->flags &= 0xDF;  // Turn off Light
-		}
+		RpGeometryForAllMaterials(geometry, SetAmbientCB, (void*)glow);
 	}
 }
 
+eOpcodeResult __stdcall setCarStatus(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	vehicle->m_nState = Params[1].nVar & 0xFF;
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarStatus(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	Params[0].nVar = vehicle->m_nState;
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setCarLights(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	vehicle->m_nVehicleFlags.bLightsOn = Params[1].nVar != 0;
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarLights(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	Params[0].nVar = vehicle->m_nVehicleFlags.bLightsOn;
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
 // Opcodes
+eOpcodeResult __stdcall setPlayerVisibility(CScript* script)
+{
+	script->Collect(1);
+	CPed* player;
+	Command<Commands::GET_PLAYER_CHAR>(0, &player);
+	player->SetRwObjectAlpha(Params[0].nVar);
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 {
 	script->Collect(3);
@@ -332,13 +673,43 @@ eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall getCarComponentVisibility(CScript* script)
+eOpcodeResult __stdcall isCarComponentVisibile(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	getVisibility(vehicle, Params[1].cVar);
-	Params[0].nVar = visibility;
-	script->Store(1);
+	script->UpdateCompareFlag(visibility != 0);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isCarComponentNotVisibile(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	getVisibility(vehicle, Params[1].cVar);
+	script->UpdateCompareFlag(visibility == 0);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isCarComponentIndexVisible(CScript* script)
+{
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	getVisibility(vehicle, component);
+	script->UpdateCompareFlag(visibility != 0);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isCarComponentIndexNotVisible(CScript* script)
+{
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	getVisibility(vehicle, component);
+	script->UpdateCompareFlag(visibility == 0);
 	return OR_CONTINUE;
 }
 
@@ -355,8 +726,8 @@ eOpcodeResult __stdcall setCarComponentGlowIndex(CScript* script)
 	script->Collect(4);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[3].nVar);
-	setGlow(vehicle, component, Params[2].nVar);
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	setGlow(vehicle, component, Params[3].nVar);
 	return OR_CONTINUE;
 }
 
@@ -365,8 +736,26 @@ eOpcodeResult __stdcall setCarComponentIndexVisibility(CScript* script)
 	script->Collect(4);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[3].nVar);
-	setVisibility(vehicle, component, Params[2].nVar);
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	setVisibility(vehicle, component, Params[3].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setCarComponentColor(CScript* script)
+{
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	setColor(vehicle, Params[1].cVar, Params[2].nVar, Params[3].nVar, Params[4].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setCarComponentIndexColor(CScript* script)
+{
+	script->Collect(6);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	setColor(vehicle, component, Params[3].nVar, Params[4].nVar, Params[5].nVar);
 	return OR_CONTINUE;
 }
 
@@ -374,53 +763,183 @@ eOpcodeResult __stdcall setCarComponentAlpha(CScript* script)
 {
 	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	setAlpha(vehicle, Params[1].cVar, Params[2].nVar);
+	if (isPlayerInCar(vehicle) || !isPlayerInModel(vehicle->m_nModelIndex)) {
+		setAlpha(vehicle, Params[1].cVar, Params[2].nVar);
+	}
+	else {
+		setVisibility(vehicle, Params[1].cVar, Params[2].nVar);
+	}
 	return OR_CONTINUE;
 }
 
 eOpcodeResult __stdcall setCarComponentIndexAlpha(CScript* script)
 {
+	script->Collect(4);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	if (isPlayerInCar(vehicle) || !isPlayerInModel(vehicle->m_nModelIndex)) {
+		setAlpha(vehicle, component, Params[3].nVar);
+	}
+	else {
+		setVisibility(vehicle, component, Params[3].nVar);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall fadeCarComponentAlpha(CScript* script)
+{
+	script->Collect(4);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (isPlayerInCar(vehicle) || !isPlayerInModel(vehicle->m_nModelIndex)) {
+		fadeAlpha(vehicle, Params[1].cVar, Params[2].nVar, Params[3].nVar);
+	}
+	else {
+		setVisibility(vehicle, Params[1].cVar, Params[2].nVar);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall fadeCarComponentIndexAlpha(CScript* script)
+{
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	char component[256];
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	if (isPlayerInCar(vehicle) || !isPlayerInModel(vehicle->m_nModelIndex)) {
+		fadeAlpha(vehicle, component, Params[3].nVar, Params[4].nVar);
+	}
+	else {
+		setVisibility(vehicle, component, Params[3].nVar);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarComponentAlpha(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	Params[0].nVar = getAlpha(vehicle, Params[1].cVar);
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarComponentIndexAlpha(CScript* script)
+{
 	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[3].nVar);
-	setAlpha(vehicle, component, Params[2].nVar);
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	Params[0].nVar = getAlpha(vehicle, component);
+	script->Store(1);
 	return OR_CONTINUE;
 }
 
 eOpcodeResult __stdcall moveCarComponent(CScript *script)
 {
 	script->Collect(5);
-	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
-	moveComponent(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	moveComponent(vehicle, Params[1].cVar, Params[2].fVar, Params[3].fVar, Params[4].fVar);
 	return OR_CONTINUE;
 }
 
 eOpcodeResult __stdcall moveCarComponentIndex(CScript* script)
 {
 	script->Collect(6);
-	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	char component[256];
-	sprintf(component, "%s%d", Params[0].cVar, Params[5].nVar);
-	moveComponent(vehicle, component, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	moveComponent(vehicle, component, Params[3].fVar, Params[4].fVar, Params[5].fVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarComponentPosition(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[1].cVar);
+	if (frame) {
+		CMatrix cmatrix(&frame->modelling, false);
+		Params[0].fVar = cmatrix.pos.x;
+		Params[1].fVar = cmatrix.pos.y;
+		Params[2].fVar = cmatrix.pos.z;
+	}
+	script->Store(3);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarComponentOffset(CScript* script)
+{
+	script->Collect(5);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[1].cVar);
+	if (frame) {
+		CMatrix cmatrix(&frame->modelling, false);
+		CVector offset = CVector(Params[2].fVar, Params[3].fVar, Params[4].fVar);
+		CVector coords = Multiply3x3(vehicle->m_placement, Multiply3x3(cmatrix, offset) + cmatrix.pos) + vehicle->GetPosition();
+		Params[0].fVar = coords.x;
+		Params[1].fVar = coords.y;
+		Params[2].fVar = coords.z;
+	}
+	script->Store(3);
 	return OR_CONTINUE;
 }
 
 eOpcodeResult __stdcall rotateCarComponent(CScript* script)
 {
 	script->Collect(5);
-	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
-	rotateComponent(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	rotateComponent(vehicle, Params[1].cVar, Params[2].fVar, Params[3].fVar, Params[4].fVar);
 	return OR_CONTINUE;
 }
 
 eOpcodeResult __stdcall rotateCarComponentIndex(CScript* script)
 {
 	script->Collect(5);
-	CVehicle* vehicle = CPools::GetVehicle(Params[4].nVar);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	char component[256];
-	sprintf(component, "%s%d", Params[0].cVar, Params[5].nVar);
-	rotateComponent(vehicle, Params[0].cVar, Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	rotateComponent(vehicle, Params[3].cVar, Params[4].fVar, Params[5].fVar, Params[6].fVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getCarComponentRotation(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[1].cVar);
+	if (frame) {
+		CMatrix cmatrix(&frame->modelling, false);
+		/*float sy = sqrtf(cmatrix.right.x * cmatrix.right.x + cmatrix.up.x * cmatrix.up.x);
+		bool singular = sy < 1e-6;
+
+		if (!singular) {
+			Params[0].fVar = degrees(atan2f(cmatrix.at.y, cmatrix.at.z));
+			Params[1].fVar = degrees(atan2f(-cmatrix.at.x, sy));
+			Params[2].fVar = degrees(atan2f(cmatrix.up.x, cmatrix.right.x));
+		}
+		else {
+			Params[0].fVar = degrees(atan2f(-cmatrix.up.z, cmatrix.up.y));
+			Params[1].fVar = degrees(atan2f(-cmatrix.at.x, sy));
+			Params[2].fVar = 0.0f;
+		}*/
+		Params[2].fVar = atan2f(cmatrix.right.y, cmatrix.up.y);
+		if (Params[2].fVar < 0.0f)
+			Params[2].fVar += (float)(2.0f * M_PI);
+		float s = sinf(Params[2].fVar);
+		float c = cosf(Params[2].fVar);
+		Params[0].fVar = atan2f(-cmatrix.at.y, s * cmatrix.right.y + c * cmatrix.up.y);
+		if (Params[0].fVar < 0.0f)
+			Params[0].fVar += (float)(2.0f * M_PI);
+		Params[1].fVar = atan2f(-(cmatrix.right.z * c - cmatrix.up.z * s), cmatrix.right.x * c - cmatrix.up.x * s);
+		if (Params[1].fVar < 0.0f)
+			Params[1].fVar += (float)(2.0f * M_PI);
+
+		Params[0].fVar = degrees(Params[0].fVar);
+		Params[1].fVar = degrees(Params[1].fVar);
+		Params[2].fVar = degrees(Params[2].fVar);
+	}
+	script->Store(3);
 	return OR_CONTINUE;
 }
 
@@ -435,6 +954,31 @@ eOpcodeResult __stdcall rotateBonnet(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall rotateBoot(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		automobile->OpenDoor(CAR_BOOT, BOOT, Params[1].fVar);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getGasPedalAudio(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);;
+		Params[0].nVar = automobile->nTireFriction[0];
+		Params[1].nVar = automobile->nTireFriction[1];
+		Params[2].nVar = automobile->nTireFriction[2];
+		Params[3].nVar = automobile->nTireFriction[3];
+	}
+	script->Store(4);
+	return OR_CONTINUE;
+}
 
 eOpcodeResult __stdcall getCarOrientation(CScript* script)
 {
@@ -446,6 +990,9 @@ eOpcodeResult __stdcall getCarOrientation(CScript* script)
 	if (vehicle) {
 		vehicle->m_placement.GetOrientation(x, y, z);
 	}
+	if (isnan(x)) x = 0.0;
+	if (isnan(y)) y = 0.0;
+	if (isnan(z)) z = 0.0;
 	Params[0].fVar = degrees(x);
 	Params[1].fVar = degrees(y);
 	Params[2].fVar = degrees(z);
@@ -481,6 +1028,27 @@ eOpcodeResult __stdcall popWheelie(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall skiMode(CScript* script)
+{
+	script->Collect(2);
+	float x, y, z;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		Command<Commands::GET_CAR_HEADING>(vehicle, &z);
+		z += 90.0;
+		z = radians(z);
+		x = cos(z) * Params[1].fVar;
+		y = sin(z) * Params[1].fVar;
+		vehicle->m_vecTurnSpeed.x = x;
+		vehicle->m_vecTurnSpeed.y = y;
+		//vehicle->m_vecFrictionTurnForce.y = x;
+		//vehicle->m_vecFrictionTurnForce.y = y;
+	}
+	return OR_CONTINUE;
+}
+
+
+
 eOpcodeResult __stdcall rotateCar(CScript* script)
 {
 	script->Collect(2);
@@ -493,6 +1061,17 @@ eOpcodeResult __stdcall rotateCar(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall getCarRotation(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		Params[0].fVar = vehicle->m_vecTurnSpeed.z;
+	}
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall setRemote(CScript* script)
 {
 	script->Collect(1);
@@ -500,13 +1079,14 @@ eOpcodeResult __stdcall setRemote(CScript* script)
 
 	if (vehicle) {
 		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-		automobile->m_nState = 10;  // Set remote mode
+		automobile->m_nState = STATUS_PLAYER_REMOTE;  // Set remote mode
 		automobile->m_nVehicleFlags.bEngineOn = 1;
 		//info->m_pRemoteVehicle = vehicle;
 		CWorld::Players[CWorld::PlayerInFocus].m_pRemoteVehicle = automobile;
 	}
 	return OR_CONTINUE;
 }
+
 eOpcodeResult __stdcall removeRemote(CScript* script)
 {
 	script->Collect(1);
@@ -514,7 +1094,7 @@ eOpcodeResult __stdcall removeRemote(CScript* script)
 
 	if (vehicle) {
 		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-		automobile->m_nState = 4;  // Set remote mode
+		automobile->m_nState = STATUS_ABANDONED;  // Set remote mode
 		automobile->m_nVehicleFlags.bEngineOn = 0;
 	}
 	CWorld::Players[CWorld::PlayerInFocus].m_pRemoteVehicle = NULL;
@@ -536,7 +1116,7 @@ eOpcodeResult __stdcall inRemote(CScript* script)
 			automobile->m_nState
 		);
 		//CMessages::AddMessageJumpQ(message, 150, 0);
-		if (player.IsPlayerInRemoteMode() && automobile->m_nState == 10) {
+		if (player.IsPlayerInRemoteMode() && automobile->m_nState == STATUS_PLAYER_REMOTE) {
 
 			script->UpdateCompareFlag(1);
 			return OR_CONTINUE;
@@ -604,6 +1184,39 @@ eOpcodeResult __stdcall setWheelStatus(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall setCarCollision(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+
+	if (vehicle) {
+		//vehicle->m_nVehicleFlags.bEngineOn = Params[1].nVar;
+		if (Params[1].nVar) {
+			vehicle->RemoveFromMovingList();
+			vehicle->m_nFlags.bUseCollision = true;
+			vehicle->AddToMovingList();
+		}
+		else {
+			vehicle->m_nFlags.bUseCollision = false;
+
+		}
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setCarEngineSound(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+
+	if (vehicle) {
+		vehicle->m_nVehicleFlags.bEngineOn = Params[1].nVar;
+	}
+	return OR_CONTINUE;
+}
+
 int convertMatrixToInt(CVector vector) {
 	return ((int)((vector.x + 4.0) * 100) * 1000000) + ((int)((vector.y + 4.0) * 100) * 1000) + ((int)((vector.z + 4.0) * 100));
 }
@@ -636,6 +1249,7 @@ eOpcodeResult __stdcall getRotationMatrix(CScript* script)
 	script->Store(3);
 	return OR_CONTINUE;
 }
+
 eOpcodeResult __stdcall setRotationMatrix(CScript* script)
 {
 	script->Collect(4);
@@ -645,6 +1259,66 @@ eOpcodeResult __stdcall setRotationMatrix(CScript* script)
 		convertIntToMatrix(vehicle->m_placement.right, Params[2].nVar);
 		convertIntToMatrix(vehicle->m_placement.at, Params[3].nVar);
 	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getUpMatrix(CScript* script)
+{
+	script->Collect(1);
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 0.0f;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+	if (vehicle) {
+		x = vehicle->m_placement.at.x;
+		y = vehicle->m_placement.at.y;
+		z = vehicle->m_placement.at.z;
+	}
+	Params[0].fVar = x;
+	Params[1].fVar = y;
+	Params[2].fVar = z;
+	script->Store(3);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getAtMatrix(CScript* script)
+{
+	script->Collect(1);
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 0.0f;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+	if (vehicle) {
+		x = vehicle->m_placement.up.x;
+		y = vehicle->m_placement.up.y;
+		z = vehicle->m_placement.up.z;
+	}
+	Params[0].fVar = x;
+	Params[1].fVar = y;
+	Params[2].fVar = z;
+	script->Store(3);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getRightMatrix(CScript* script)
+{
+	script->Collect(1);
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 0.0f;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+	if (vehicle) {
+		x = vehicle->m_placement.right.x;
+		y = vehicle->m_placement.right.y;
+		z = vehicle->m_placement.right.z;
+	}
+	Params[0].fVar = x;
+	Params[1].fVar = y;
+	Params[2].fVar = z;
+	script->Store(3);
 	return OR_CONTINUE;
 }
 
@@ -671,7 +1345,7 @@ eOpcodeResult __stdcall setVelocityVector(CScript* script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall getVelocity(CScript* script)
+eOpcodeResult __stdcall getVelocityDirection(CScript* script)
 {
 	int velocity = 0;
 	script->Collect(1);
@@ -687,6 +1361,67 @@ eOpcodeResult __stdcall getVelocity(CScript* script)
 	Params[0].fVar = x;
 	Params[1].fVar = y;
 	Params[2].fVar = z;
+	script->Store(3);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getVelocity(CScript* script)
+{
+	int velocity = 0;
+	script->Collect(1);
+	float x = 0.0f;
+	float y = 0.0f;
+	float z = 0.0f;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		x = vehicle->m_vecMoveSpeed.x;
+		y = vehicle->m_vecMoveSpeed.y;
+		z = vehicle->m_vecMoveSpeed.z;
+	}
+	Params[0].fVar = x;
+	Params[1].fVar = y;
+	Params[2].fVar = z;
+	script->Store(3);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setVelocity(CScript* script)
+{
+	script->Collect(4);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		vehicle->m_vecMoveSpeed.x = Params[1].fVar;
+		vehicle->m_vecMoveSpeed.y = Params[2].fVar;
+		vehicle->m_vecMoveSpeed.z = Params[3].fVar;
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getForwardVelocityVectorWithSpeed(CScript* script)
+{
+	int forward = 0;
+	int right = 0;
+	int up = 0;
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		forward = convertMatrixToInt(vehicle->m_placement.up * (Params[1].fVar * 2.0f / 100.0f));
+	}
+	Params[0].nVar = forward;
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getRelativeVelocity(CScript* script) {
+	script->Collect(1);
+	CVector relativeVelocity;
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		relativeVelocity = Multiply3x3(vehicle->m_vecMoveSpeed, vehicle->m_placement);
+	}
+	Params[0].fVar = relativeVelocity.x;
+	Params[1].fVar = relativeVelocity.y;
+	Params[2].fVar = relativeVelocity.z;
 	script->Store(3);
 	return OR_CONTINUE;
 }
@@ -749,6 +1484,27 @@ eOpcodeResult __stdcall addTex(CScript* script) {
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall attachVehicle(CScript* script) {
+	script->Collect(5);
+	int index = Params[0].nVar;
+	CVehicle* attached = CPools::GetVehicle(index);
+	CVehicle* vehicle = CPools::GetVehicle(Params[1].nVar);
+	if (vehicle && attached) {
+		carAttachments[index].vehicle = vehicle;
+		carAttachments[index].attached = attached;
+		carAttachments[index].offset = CVector(Params[2].fVar, Params[3].fVar, Params[4].fVar);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall detachVehicle(CScript* script) {
+	script->Collect(1);
+	int index = Params[0].nVar;
+	if (carAttachments.contains(index)) {
+		carAttachments.erase(index);
+	}
+	return OR_CONTINUE;
+}
 
 RpMaterial* MaterialCallback(RpMaterial* material, void* texture) {
 
@@ -837,12 +1593,12 @@ eOpcodeResult __stdcall replaceTex(CScript* script)
 		//AtomicCallback(reinterpret_cast<RpAtomic*>(vehicle->m_pRwObject), (void*)replacement);
 		//RpClumpForAllAtomics(vehicle->m_pRwClump, AtomicCallback, (void*)replacement);
 		if (frame) {
-			CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("infernus"));
+			CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("hotring"));
 			RwTexture* replacement = RwTextureRead("ice", NULL);
 			of << "Found Frame" << std::endl;
 			RpAtomic* atomic;
-			RpGeometry* geometry;
-			RwFrameForAllObjects(frame, GetVehicleAtomicObjectCB, &atomic);
+			//RpGeometry* geometry;
+			RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
 			RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, (void*)replacement);
 			//frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "door_lf_hi_ok");
 			/*geometry = atomic->geometry;
@@ -920,6 +1676,18 @@ eOpcodeResult __stdcall removeObjects(CScript* script)
 	string key(Params[0].cVar);
 	if (!removeObjectQueue.contains(key)) {
 		removeObjectQueue[key] = models;
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setBuildingComponentVisibility(CScript* script)
+{
+	script->Collect(3);
+	for (auto object : CPools::ms_pBuildingPool) {
+		if (object->m_nModelIndex == Params[0].nVar) {
+			setVisibility(object, Params[1].cVar, Params[2].nVar);
+			break;
+		}
 	}
 	return OR_CONTINUE;
 }
@@ -1027,9 +1795,13 @@ eOpcodeResult __stdcall isSoundStoppedIndex(CScript* script)
 	return OR_CONTINUE;
 }
 
+
 void __playSound(string key) {
 	char fullpath[128];
 	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
+	if (!filesystem::exists(fullpath)) {
+		return;
+	}
 	cleanupSound(key);
 	soundMap[key].sound = m_soundEngine->play2D(fullpath, Params[1].nVar, false, true);
 	soundMap[key].spatial = false;
@@ -1059,13 +1831,18 @@ eOpcodeResult __stdcall playKeypad(CScript* script)
 	script->Collect(1);
 	char fullpath[128];
 	snprintf(fullpath, 128, ".\\sound\\%d.wav", Params[0].nVar);
-	m_soundEngine->play2D(fullpath);
+	if (filesystem::exists(fullpath)) {
+		m_soundEngine->play2D(fullpath);
+	}
 	return OR_CONTINUE;
 }
 
 void __playSoundLocation(string key) {
 	char fullpath[128];
 	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
+	if (!filesystem::exists(fullpath)) {
+		return;
+	}
 	cleanupSound(key);
 	vec3df pos;
 	pos.X = Params[1].fVar;
@@ -1098,15 +1875,19 @@ eOpcodeResult __stdcall playSoundAtLocationIndex(CScript* script)
 
 void __attachSoundToVehicle(string key, CVehicle* vehicle) {
 	char fullpath[128];
-	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
+	snprintf(fullpath, 128, ".\\sound\\%s", Params[1].cVar);
+	if (!filesystem::exists(fullpath)) {
+		return;
+	}
 	cleanupSound(key);
 	vec3df pos;
 	soundMap[key].vehicle = vehicle;
-	soundMap[key].offset = CVector(Params[1].fVar, Params[2].fVar, Params[3].fVar);
+	soundMap[key].offset = CVector(Params[2].fVar, Params[3].fVar, Params[4].fVar);
 	Command<Commands::GET_OFFSET_FROM_CAR_IN_WORLD_COORDS>(vehicle, soundMap[key].offset.x, soundMap[key].offset.y, soundMap[key].offset.z, &pos.X, &pos.Y, &pos.Z);
 	pos.Y *= -1.0;
-	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, Params[4].nVar, false, true);
-	soundMap[key].sound->setMinDistance(Params[5].fVar);
+
+	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, Params[5].nVar, false, true);
+	soundMap[key].sound->setMinDistance(Params[6].fVar);
 	soundMap[key].spatial = true;
 }
 
@@ -1114,11 +1895,31 @@ eOpcodeResult __stdcall attachSoundToVehicle(CScript* script)
 {
 	script->Collect(7);
 	int index = 0;
-	CVehicle* vehicle = CPools::GetVehicle(Params[6].nVar);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 
 	if (vehicle) {
-		string key= getKeyIndex(Params[0].cVar, Params[6].nVar);
+		string key= getKeyIndex(Params[1].cVar, Params[0].nVar);
 		__attachSoundToVehicle(key, vehicle);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setFrequency(CScript* script)
+{
+	script->Collect(3);
+	string key = getKeyIndex(Params[0].cVar, Params[1].nVar);
+	if (soundMap.contains(key)) {
+		soundMap[key].sound->setPlaybackSpeed(Params[2].fVar);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setVolume(CScript* script)
+{
+	script->Collect(3);
+	string key = getKeyIndex(Params[0].cVar, Params[1].nVar);
+	if (soundMap.contains(key)) {
+		soundMap[key].sound->setVolume(Params[2].fVar);
 	}
 	return OR_CONTINUE;
 }
@@ -1127,10 +1928,10 @@ eOpcodeResult __stdcall attachSoundToVehicleIndex(CScript* script)
 {
 	script->Collect(7);
 	int index = 0;
-	CVehicle* vehicle = CPools::GetVehicle(Params[6].nVar);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	if (vehicle) {
-		index = findEmptyIndex(Params[0].cVar);
-		string key = getKeyIndex(Params[0].cVar, index);
+		index = findEmptyIndex(Params[1].cVar);
+		string key = getKeyIndex(Params[1].cVar, index);
 		__attachSoundToVehicle(key, vehicle);
 	}
 	Params[0].nVar = index;
@@ -1138,12 +1939,320 @@ eOpcodeResult __stdcall attachSoundToVehicleIndex(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall setDoppler(CScript* script)
+{
+	script->Collect(2);
+	m_soundEngine->setDopplerEffectParameters(Params[0].fVar, Params[1].fVar);
+	return OR_CONTINUE;
+}
+
+void ConvertBikeDataToGameUnits(tBikeHandlingData* handling)
+{
+	handling->m_fMaxLean = sin(radians(handling->m_fMaxLean));
+	handling->m_fFullAnimLean = radians(handling->m_fFullAnimLean);
+	handling->m_fWheelieAng = sin(radians(handling->m_fWheelieAng));
+	handling->m_fStoppieAng = sin(radians(handling->m_fStoppieAng));
+}
+
+bool doesFileExist(const char* filepath) {
+	fstream infile(".\\DATA\\HANDLING_ADDITIONAL.CFG");
+	return infile.good();
+}
+
+void LoadAdditionalHandlingData(void)
+{
+	char* start, * end;
+	char line[201];	// weird value
+	char delim[4];	// not sure
+	char* word;
+	string key;
+	int field;
+	int keepGoing;
+	tHandlingData* handling;
+	tFlyingHandlingData* flyingHandling;
+	tBoatHandlingData* boatHandling;
+	tBikeHandlingData* bikeHandling;
+
+	if (!doesFileExist(".\\DATA\\HANDLING_ADDITIONAL.CFG")) {
+		return;
+	}
+
+	CFileMgr::SetDir("DATA");
+	CFileMgr::LoadFile("HANDLING_ADDITIONAL.CFG", work_buff, sizeof(work_buff), "r");
+	CFileMgr::SetDir("");
+
+	start = (char*)work_buff;
+	end = start + 1;
+	keepGoing = 1;
+
+	while (keepGoing) {
+		// find end of line
+		while (*end != '\n') end++;
+
+		// get line
+		strncpy(line, start, end - start);
+		line[end - start] = '\0';
+		start = end + 1;
+		end = start + 1;
+
+		// yeah, this is kinda crappy
+		if (strcmp(line, ";the end") == 0)
+			keepGoing = 0;
+		else if (line[0] != ';') {
+			if (line[0] == '!') {
+				// Bike data
+				field = 0;
+				strcpy(delim, " \t");
+				// FIX: game seems to use a do-while loop here
+				for (word = strtok(line, delim); word; word = strtok(NULL, delim)) {
+					switch (field) {
+					case  0: break;
+					case  1:
+						key = string(word);
+						bikeHandling = new tBikeHandlingData();
+						bikeHandlingData[key] = bikeHandling;
+						break;
+					case  2: bikeHandling->m_fLeanFwdCOM = (float)atof(word); break;
+					case  3: bikeHandling->m_fLeanFwdForce = (float)atof(word); break;
+					case  4: bikeHandling->m_fLeanBakCOM = (float)atof(word); break;
+					case  5: bikeHandling->m_fLeanBakForce = (float)atof(word); break;
+					case  6: bikeHandling->m_fMaxLean = (float)atof(word); break;
+					case  7: bikeHandling->m_fFullAnimLean = (float)atof(word); break;
+					case  8: bikeHandling->m_fDesLean = (float)atof(word); break;
+					case  9: bikeHandling->m_fSpeedSteer = (float)atof(word); break;
+					case 10: bikeHandling->m_fSlipSteer = (float)atof(word); break;
+					case 11: bikeHandling->m_fNoPlayerCOMz = (float)atof(word); break;
+					case 12: bikeHandling->m_fWheelieAng = (float)atof(word); break;
+					case 13: bikeHandling->m_fStoppieAng = (float)atof(word); break;
+					case 14: bikeHandling->m_fWheelieSteer = (float)atof(word); break;
+					case 15: bikeHandling->m_fWheelieStabMult = (float)atof(word); break;
+					case 16: bikeHandling->m_fStoppieStabMult = (float)atof(word); break;
+					}
+					field++;
+				}
+				ConvertBikeDataToGameUnits(bikeHandling);
+			}
+			else if (line[0] == '$') {
+				// Flying data
+				field = 0;
+				strcpy(delim, " \t");
+				// FIX: game seems to use a do-while loop here
+				for (word = strtok(line, delim); word; word = strtok(NULL, delim)) {
+					switch (field) {
+					case  0: break;
+					case  1:
+						key = string(word);
+						flyingHandling = new tFlyingHandlingData();
+						flyingHandlingData[key] = flyingHandling;
+						break;
+					case  2: flyingHandling->fThrust = (float)atof(word); break;
+					case  3: flyingHandling->fThrustFallOff = (float)atof(word); break;
+					case  4: flyingHandling->fYaw = (float)atof(word); break;
+					case  5: flyingHandling->fYawStab = (float)atof(word); break;
+					case  6: flyingHandling->fSideSlip = (float)atof(word); break;
+					case  7: flyingHandling->fRoll = (float)atof(word); break;
+					case  8: flyingHandling->fRollStab = (float)atof(word); break;
+					case  9: flyingHandling->fPitch = (float)atof(word); break;
+					case 10: flyingHandling->fPitchStab = (float)atof(word); break;
+					case 11: flyingHandling->fFormLift = (float)atof(word); break;
+					case 12: flyingHandling->fAttackLift = (float)atof(word); break;
+					case 13: flyingHandling->fMoveRes = (float)atof(word); break;
+					case 14: flyingHandling->vecTurnRes.x = (float)atof(word); break;
+					case 15: flyingHandling->vecTurnRes.y = (float)atof(word); break;
+					case 16: flyingHandling->vecTurnRes.z = (float)atof(word); break;
+					case 17: flyingHandling->vecSpeedRes.x = (float)atof(word); break;
+					case 18: flyingHandling->vecSpeedRes.y = (float)atof(word); break;
+					case 19: flyingHandling->vecSpeedRes.z = (float)atof(word); break;
+					}
+					field++;
+				}
+			}
+			else if (line[0] == '%') {
+				// Boat data
+				field = 0;
+				strcpy(delim, " \t");
+				// FIX: game seems to use a do-while loop here
+				for (word = strtok(line, delim); word; word = strtok(NULL, delim)) {
+					switch (field) {
+					case  0: break;
+					case  1:
+						key = string(word);
+						boatHandling = new tBoatHandlingData();
+						boatHandlingData[key] = boatHandling;
+						break;
+					case  2: boatHandling->m_fThrustY = (float)atof(word); break;
+					case  3: boatHandling->m_fThrustZ = (float)atof(word); break;
+					case  4: boatHandling->m_fThrustAppZ = (float)atof(word); break;
+					case  5: boatHandling->m_fAqPlaneForce = (float)atof(word); break;
+					case  6: boatHandling->m_fAqPlaneLimit = (float)atof(word); break;
+					case  7: boatHandling->m_fAqPlaneOffset = (float)atof(word); break;
+					case  8: boatHandling->m_fWaveAudioMult = (float)atof(word); break;
+					case  9: boatHandling->m_vMoveRes.x = (float)atof(word); break;
+					case 10: boatHandling->m_vMoveRes.y = (float)atof(word); break;
+					case 11: boatHandling->m_vMoveRes.z = (float)atof(word); break;
+					case 12: boatHandling->m_vTurnRes.x = (float)atof(word); break;
+					case 13: boatHandling->m_vTurnRes.y = (float)atof(word); break;
+					case 14: boatHandling->m_vTurnRes.z = (float)atof(word); break;
+					case 15: boatHandling->m_fLookLRBehindCamHeight = (float)atof(word); break;
+					}
+					field++;
+				}
+			}
+			else {
+				field = 0;
+				strcpy(delim, " \t");
+				// FIX: game seems to use a do-while loop here
+				for (word = strtok(line, delim); word; word = strtok(NULL, delim)) {
+					switch (field) {
+					case  0:
+						key = string(word);
+						handling = new tHandlingData();
+						handlingData[key] = handling;
+						break;
+					case  1: handling->fMass = (float)atof(word); break;
+					case  2: handling->m_vDimensions.x = (float)atof(word); break;
+					case  3: handling->m_vDimensions.y = (float)atof(word); break;
+					case  4: handling->m_vDimensions.z = (float)atof(word); break;
+					case  5: handling->m_vecCentreOfMass.x = (float)atof(word); break;
+					case  6: handling->m_vecCentreOfMass.y = (float)atof(word); break;
+					case  7: handling->m_vecCentreOfMass.z = (float)atof(word); break;
+					case  8: handling->nPercentSubmerged = atoi(word); break;
+					case  9: handling->fTractionMultiplier = (float)atof(word); break;
+					case 10: handling->fTractionLoss = (float)atof(word); break;
+					case 11: handling->fTractionBias = (float)atof(word); break;
+					case 12: handling->m_transmissionData.m_nNumberOfGears = atoi(word); break;
+					case 13: handling->m_transmissionData.m_fMaxGearVelocity = (float)atof(word); break;
+					case 14: handling->m_transmissionData.m_fEngineAcceleration = (float)atof(word) * 0.4f; break;
+					case 15: handling->m_transmissionData.m_nDriveType = word[0]; break;
+					case 16: handling->m_transmissionData.m_nEngineType = word[0]; break;
+					case 17: handling->fBrakeDeceleration = (float)atof(word); break;
+					case 18: handling->fBrakeBias = (float)atof(word); break;
+					case 19: handling->bABS = !!atoi(word); break;
+					case 20: handling->fSteeringLock = (float)atof(word); break;
+					case 21: handling->fSuspensionForceLevel = (float)atof(word); break;
+					case 22: handling->fSuspensionDampingLevel = (float)atof(word); break;
+					case 23: handling->fSeatOffsetDistance = (float)atof(word); break;
+					case 24: handling->fCollisionDamageMultiplier = (float)atof(word); break;
+					case 25: handling->nMonetaryValue = atoi(word); break;
+					case 26: handling->fSuspUpperLimit= (float)atof(word); break;
+					case 27: handling->fSuspLowerLimit = (float)atof(word); break;
+					case 28: handling->fSuspBias = (float)atof(word); break;
+					case 29: handling->fSuspAntiDiveMultiplier = (float)atof(word); break;
+					case 30:
+						sscanf(word, "%x", &handling->uFlags);
+						handling->m_transmissionData.m_nHandlingFlags = handling->uFlags;
+						break;
+					case 31: handling->bFrontLights = eVehicleLightsSize(atoi(word)); break;
+					case 32: handling->bRearLights = eVehicleLightsSize(atoi(word)); break;
+					}
+					field++;
+				}
+				gHandlingDataMgr.ConvertDataToGameUnits(handling);
+			}
+		}
+	}
+}
+
+void LoadAdditionalVehicleColours(void)
+{
+	int fd;
+	int i;
+	char line[1024];
+	int start, end;
+	int section, numCols;
+	enum {
+		NONE,
+		COLOURS,
+		CARS
+	};
+	int r, g, b;
+	char name[64];
+	int colors[16];
+	int n;
+
+	if (!doesFileExist(".\\DATA\\CARCOLS_ADDITIONAL.DAT")) {
+		return;
+	}
+
+	CFileMgr::SetDir("DATA");
+	fd = CFileMgr::OpenFile("CARCOLS_ADDITIONAL.DAT", "r");
+	CFileMgr::SetDir("");
+
+	section = 0;
+	numCols = 0;
+	while (numCols < 256) {
+		if (CVehicleModelInfo::ms_colourTextureTable[numCols].a == 0) {
+			break;
+		}
+		numCols++;
+	}
+	while (CFileMgr::ReadLine(fd, line, sizeof(line))) {
+		// find first valid character in line
+		for (start = 0; ; start++)
+			if (line[start] > ' ' || line[start] == '\0' || line[start] == '\n')
+				break;
+		// find end of line
+		for (end = start; ; end++) {
+			if (line[end] == '\0' || line[end] == '\n')
+				break;
+			if (line[end] == ',' || line[end] == '\r')
+				line[end] = ' ';
+		}
+		line[end] = '\0';
+
+		// empty line
+		if (line[start] == '#' || line[start] == '\0')
+			continue;
+
+		if (section == NONE) {
+			if (line[start] == 'c' && line[start + 1] == 'o' && line[start + 2] == 'l')
+				section = COLOURS;
+			if (line[start] == 'c' && line[start + 1] == 'a' && line[start + 2] == 'r')
+				section = CARS;
+		}
+		else if (line[start] == 'e' && line[start + 1] == 'n' && line[start + 2] == 'd') {
+			section = NONE;
+		}
+		else if (section == COLOURS) {
+			sscanf(&line[start],	// BUG: games doesn't add start
+				"%d %d %d", &r, &g, &b);
+
+			CVehicleModelInfo::ms_colourTextureTable[numCols].r = r;
+			CVehicleModelInfo::ms_colourTextureTable[numCols].g = g;
+			CVehicleModelInfo::ms_colourTextureTable[numCols].b = b;
+			CVehicleModelInfo::ms_colourTextureTable[numCols].a = 0xFF;
+			numCols++;
+		}
+		else if (section == CARS) {
+			n = sscanf(&line[start],	// BUG: games doesn't add start
+				"%s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+				name,
+				&colors[0], &colors[1],
+				&colors[2], &colors[3],
+				&colors[4], &colors[5],
+				&colors[6], &colors[7],
+				&colors[8], &colors[9],
+				&colors[10], &colors[11],
+				&colors[12], &colors[13],
+				&colors[14], &colors[15]);
+			CVehicleModelInfo* mi = (CVehicleModelInfo*)CModelInfo::GetModelInfo(name, NULL);
+			assert(mi);
+			mi->m_nNumColorVariations = (n - 1) / 2;
+			for (i = 0; i < mi->m_nNumColorVariations; i++) {
+				mi->m_anPrimaryColors[i] = colors[i * 2 + 0];
+				mi->m_anSecondaryColors[i] = colors[i * 2 + 1];
+			}
+		}
+	}
+
+	CFileMgr::CloseFile(fd);
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 {
 	CVector* pos;
-	vec3df playerPos, soundPos, dir;
+	vec3df playerPos, soundPos, soundVel, dir;
 	string key;
-	float distance;
 	if (reason == DLL_PROCESS_ATTACH)
 	{
 		DisableThreadLibraryCalls((HMODULE)hModule);
@@ -1159,6 +2268,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F09, removeBuilding);
 		Opcodes::RegisterOpcode(0x3F0A, oldReplaceTex);
 		Opcodes::RegisterOpcode(0x3F0B, replaceTex);
+		Opcodes::RegisterOpcode(0x3F0C, setCarCollision);
+		Opcodes::RegisterOpcode(0x3F0D, getDoorAngle);
+		Opcodes::RegisterOpcode(0x3F0E, getWheelAngle);
+		Opcodes::RegisterOpcode(0x3F0F, getWheelSpeed);
 		Opcodes::RegisterOpcode(0x3F10, setCarComponentVisibility);
 		Opcodes::RegisterOpcode(0x3F11, setCarComponentIndexVisibility);
 		Opcodes::RegisterOpcode(0x3F12, setCarComponentAlpha);
@@ -1169,7 +2282,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F17, rotateCarComponentIndex);
 		Opcodes::RegisterOpcode(0x3F18, setCarComponentGlow);
 		Opcodes::RegisterOpcode(0x3F19, setCarComponentGlowIndex);
-		Opcodes::RegisterOpcode(0x3F1A, rotateBonnet);
+		Opcodes::RegisterOpcode(0x3F1A, getGasPedalAudio);
+		Opcodes::RegisterOpcode(0x3F1B, getCarComponentPosition);
+		Opcodes::RegisterOpcode(0x3F1C, getCarComponentRotation);
+		Opcodes::RegisterOpcode(0x3F1D, getCarComponentOffset);
+		Opcodes::RegisterOpcode(0x3F1E, setWheelAngle);
+		Opcodes::RegisterOpcode(0x3F1F, setWheelSpeed);
 		Opcodes::RegisterOpcode(0x3F20, getCarOrientation);
 		Opcodes::RegisterOpcode(0x3F21, setCarOrientation);
 		Opcodes::RegisterOpcode(0x3F22, popWheelie);
@@ -1181,16 +2299,44 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F28, setWheelStatus);
 		Opcodes::RegisterOpcode(0x3F29, createLight);
 		Opcodes::RegisterOpcode(0x3F2A, inRemote);
+		Opcodes::RegisterOpcode(0x3F2B, attachVehicle);
+		Opcodes::RegisterOpcode(0x3F2C, detachVehicle);
+		Opcodes::RegisterOpcode(0x3F2D, setCarEngineSound);
+		Opcodes::RegisterOpcode(0x3F2E, getDriveWheelsOnGround);
+		Opcodes::RegisterOpcode(0x3F2F, getCarRotation);
 		Opcodes::RegisterOpcode(0x3F30, rotateCar);
 		Opcodes::RegisterOpcode(0x3F31, getRotationMatrix);
 		Opcodes::RegisterOpcode(0x3F32, setRotationMatrix);
-		Opcodes::RegisterOpcode(0x3F33, getVelocity);
+		Opcodes::RegisterOpcode(0x3F33, getVelocityDirection);
 		Opcodes::RegisterOpcode(0x3F34, getVelocityVector);
 		Opcodes::RegisterOpcode(0x3F35, setVelocityVector);
 		Opcodes::RegisterOpcode(0x3F36, getSteeringAngle);
 		Opcodes::RegisterOpcode(0x3F37, addObjects);
 		Opcodes::RegisterOpcode(0x3F38, removeObjects);
-		Opcodes::RegisterOpcode(0x3F40, getCarComponentVisibility);
+		Opcodes::RegisterOpcode(0x3F39, getVelocity);
+		Opcodes::RegisterOpcode(0x3F3A, setVelocity);
+		Opcodes::RegisterOpcode(0x3F3B, getForwardVelocityVectorWithSpeed);
+		Opcodes::RegisterOpcode(0x3F3C, getRelativeVelocity);
+		Opcodes::RegisterOpcode(0x3F3D, skiMode);
+		Opcodes::RegisterOpcode(0x3F3E, isWheelsOnGround);
+		Opcodes::RegisterOpcode(0x3F3F, isWheelsNotOnGround);
+		Opcodes::RegisterOpcode(0x3F40, isCarComponentVisibile);
+		Opcodes::RegisterOpcode(0x3F41, isCarComponentIndexVisible);
+		Opcodes::RegisterOpcode(0x3F42, getAtMatrix);
+		Opcodes::RegisterOpcode(0x3F43, getRightMatrix);
+		Opcodes::RegisterOpcode(0x3F44, getUpMatrix);
+		Opcodes::RegisterOpcode(0x3F45, rotateBonnet);
+		Opcodes::RegisterOpcode(0x3F46, rotateBoot);
+		Opcodes::RegisterOpcode(0x3F47, getCarComponentAlpha);
+		Opcodes::RegisterOpcode(0x3F48, getCarComponentIndexAlpha);
+		Opcodes::RegisterOpcode(0x3F49, setCarComponentColor);
+		Opcodes::RegisterOpcode(0x3F4A, setCarComponentIndexColor);
+		Opcodes::RegisterOpcode(0x3F4B, updateHandling);
+		Opcodes::RegisterOpcode(0x3F4C, setBuildingComponentVisibility);
+		Opcodes::RegisterOpcode(0x3F50, isCarComponentNotVisibile);
+		Opcodes::RegisterOpcode(0x3F51, isCarComponentIndexNotVisible);
+		Opcodes::RegisterOpcode(0x3F52, fadeCarComponentAlpha);
+		Opcodes::RegisterOpcode(0x3F53, fadeCarComponentIndexAlpha);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
@@ -1205,6 +2351,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F94, playSoundIndex);
 		Opcodes::RegisterOpcode(0x3F95, playSoundAtLocationIndex);
 		Opcodes::RegisterOpcode(0x3F96, attachSoundToVehicleIndex);
+		Opcodes::RegisterOpcode(0x3F97, setFrequency);
+		Opcodes::RegisterOpcode(0x3F98, setVolume);
+		Opcodes::RegisterOpcode(0x3F99, setDoppler);
+		Opcodes::RegisterOpcode(0x3F9A, setCarStatus);
+		Opcodes::RegisterOpcode(0x3F9B, getCarStatus);
+		Opcodes::RegisterOpcode(0x3F9C, setCarLights);
+		Opcodes::RegisterOpcode(0x3F9D, getCarLights);
+
 
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
@@ -1212,9 +2366,27 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Events::initGameEvent += [] {
 			//patch::Nop(0x58E59B, 5, true);
 			//patch::Nop(0x58E611, 5, true);
-			m_soundEngine = createIrrKlangDevice();
-			m_soundEngine->setRolloffFactor(1.5f);
-			//CClock::ms_nMillisecondsPerGameMinute = 60000;
+
+			if (!loadedSound) {
+				m_soundEngine = createIrrKlangDevice();
+				m_soundEngine->setRolloffFactor(1.5f);
+				m_soundEngine->setDopplerEffectParameters(2.0f, 10.0f);
+				loadedSound = true;
+			}
+			else {
+				m_soundEngine->removeAllSoundSources();
+			}
+			soundMap.clear();
+			handlingData.clear();
+			bikeHandlingData.clear();
+			boatHandlingData.clear();
+			carAttachments.clear();
+			flyingHandlingData.clear();
+			carAttachments.clear();
+			ideMap.clear();
+			removeObjectQueue.clear();
+			LoadAdditionalHandlingData();
+			LoadAdditionalVehicleColours();
 		};
 
 		Events::gameProcessEvent += [&] {
@@ -1255,10 +2427,23 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 							soundMap[itr->first].sound->setIsPaused(false);
 						}
 						if (soundMap[itr->first].vehicle) {
+							// Stop sound if wrecked
+							int index = CPools::GetVehicleRef(soundMap[itr->first].vehicle);
+							if (index < 0 || soundMap[itr->first].vehicle->m_nState == 5) {
+								soundMap[itr->first].sound->stop();
+								soundMap[itr->first].sound->drop();
+								itr = soundMap.erase(itr);
+								continue;
+							}
 							// Attach sound to vehicle
 							Command<Commands::GET_OFFSET_FROM_CAR_IN_WORLD_COORDS>(soundMap[itr->first].vehicle, soundMap[itr->first].offset.x, soundMap[itr->first].offset.y, soundMap[itr->first].offset.z, &soundPos.X, &soundPos.Y, &soundPos.Z);
 							soundPos.Y *= -1.0;
 							soundMap[itr->first].sound->setPosition(soundPos);
+							// Set speed for doppler effect
+							soundVel.X = soundMap[itr->first].vehicle->m_vecMoveSpeed.x;
+							soundVel.Y = soundMap[itr->first].vehicle->m_vecMoveSpeed.y * -1.0f;
+							soundVel.Z = soundMap[itr->first].vehicle->m_vecMoveSpeed.z;
+							soundMap[itr->first].sound->setVelocity(soundVel);
 						}
 						else {
 							// Set sound to specified location
@@ -1268,17 +2453,31 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 						}
 
 						// Mute sound if > 150 units away, otherwise play at full volume
-						distance = (float)playerPos.getDistanceFrom(soundPos);
+						/*distance = (float)playerPos.getDistanceFrom(soundPos);
 						if (distance < 150.0f || !soundMap[itr->first].spatial) {
 							soundMap[itr->first].sound->setVolume(1.0f);
 						}
 						else {
 							soundMap[itr->first].sound->setVolume(0.0f);
-						}
+						}*/
 						++itr;
 					}
 					paused = false;
 				}
+			}
+			for (auto const& [vehicle_id, attachment] : carAttachments) {
+				CVector coords = Multiply3x3(attachment.vehicle->m_placement, attachment.offset) + attachment.vehicle->GetPosition();
+				attachment.attached->SetPosition(coords);
+				attachment.attached->m_placement.up.x = attachment.vehicle->m_placement.up.x;
+				attachment.attached->m_placement.up.y = attachment.vehicle->m_placement.up.y;
+				attachment.attached->m_placement.up.z = attachment.vehicle->m_placement.up.z;
+				attachment.attached->m_placement.right.x = attachment.vehicle->m_placement.right.x;
+				attachment.attached->m_placement.right.y = attachment.vehicle->m_placement.right.y;
+				attachment.attached->m_placement.right.z = attachment.vehicle->m_placement.right.z;
+				attachment.attached->m_placement.at.x = attachment.vehicle->m_placement.at.x;
+				attachment.attached->m_placement.at.y = attachment.vehicle->m_placement.at.y;
+				attachment.attached->m_placement.at.z = attachment.vehicle->m_placement.at.z;
+				attachment.attached->m_vecMoveSpeed = attachment.vehicle->m_vecMoveSpeed;
 			}
 
 			// Removes dynamically created objects.  Has to be here because game script tick causes them to flash briefly
