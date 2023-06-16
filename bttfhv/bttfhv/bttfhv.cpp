@@ -164,14 +164,13 @@ void HoverControl(CVehicle* vehicle)
 		if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
 			fThrust = CPad::GetPad(0)->GetCarGunUpDown() / 128.0f;
 		}
-		else if(abs(CPad::GetPad(0)->LookAroundUpDown()) > 1.0f) {
+		else if (abs(CPad::GetPad(0)->LookAroundUpDown()) > 1.0f) {
 			fPitch = CPad::GetPad(0)->LookAroundUpDown() / 128.0f;
 		}
 		fRoll = -CPad::GetPad(0)->GetSteeringLeftRight() / 128.0f;
 		fYaw = CPad::GetPad(0)->GetCarGunLeftRight() / 128.0f;
 	}
 	else {
-		CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 		fThrust = -0.1f;
 		fYaw = 0.0f;
 		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
@@ -225,6 +224,74 @@ void HoverControl(CVehicle* vehicle)
 	vecTurnSpeed.z *= fResistanceMultiplier;
 	vehicle->m_vecTurnSpeed = Multiply3x3(vehicle->m_placement, vecTurnSpeed);
 	vehicle->ApplyTurnForce(-vehicle->m_placement.right * fResistance * vehicle->m_fTurnMass, vehicle->m_placement.up + Multiply3x3(vehicle->m_placement, vehicle->m_vecCentreOfMass));
+}
+
+void DamagedHoverControl(CVehicle * vehicle)
+{
+	if (vehicle->m_pFlyingHandling == nullptr)
+		return;
+	float fPitch = 0.0f;
+	float fRoll = 0.0f;
+	float fYaw = 0.0f;
+	tFlyingHandlingData* flyingHandling = vehicle->m_pFlyingHandling;
+	float rm = pow(flyingHandling->fMoveRes, CTimer::ms_fTimeStep);
+	if (vehicle->m_nState != 0 && vehicle->m_nState != 10) {
+		rm *= 0.97f;
+	}
+	vehicle->m_vecMoveSpeed *= rm;
+	float fUpSpeed = DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
+
+	fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
+	if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
+		// Do nothing
+	}
+	else if (abs(CPad::GetPad(0)->LookAroundUpDown()) > 1.0f) {
+		fPitch = CPad::GetPad(0)->LookAroundUpDown() / 128.0f;
+	}
+	fRoll = -CPad::GetPad(0)->GetSteeringLeftRight() / 128.0f;
+	fYaw = CPad::GetPad(0)->GetCarGunLeftRight() / 128.0f;
+
+
+	if (vehicle->m_placement.at.z > 0.0f) {
+		float upRight = Clamp(vehicle->m_placement.right.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
+		float upImpulseRight = -upRight * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseRight * vehicle->m_placement.at, vehicle->m_placement.right);
+
+		float upFwd = Clamp(vehicle->m_placement.up.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
+		float upImpulseFwd = -upFwd * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseFwd * vehicle->m_placement.at, vehicle->m_placement.up);
+	}
+	else {
+		float upRight = vehicle->m_placement.right.z < 0.0f ? -flyingHandling->fFormLift : flyingHandling->fFormLift;
+		float upImpulseRight = -upRight * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseRight * vehicle->m_placement.at, vehicle->m_placement.right);
+
+		float upFwd = vehicle->m_placement.up.z < 0.0f ? -flyingHandling->fFormLift : flyingHandling->fFormLift;
+		float upImpulseFwd = -upFwd * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
+		vehicle->ApplyTurnForce(upImpulseFwd * vehicle->m_placement.at, vehicle->m_placement.up);
+	}
+
+	vehicle->ApplyTurnForce(fPitch * vehicle->m_placement.at * flyingHandling->fPitch * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.up);
+	vehicle->ApplyTurnForce(fRoll * vehicle->m_placement.at * flyingHandling->fRoll * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
+
+	float fSideSpeed = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.right);
+	float fSideSlipAccel = flyingHandling->fSideSlip * fSideSpeed * abs(fSideSpeed);
+	//vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.right * fSideSlipAccel * CTimer::ms_fTimeStep);
+	float fYawAccel = flyingHandling->fYawStab * fSideSpeed * abs(fSideSpeed) + flyingHandling->fYaw * fYaw;
+	vehicle->ApplyTurnForce(fYawAccel * vehicle->m_placement.right * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, -vehicle->m_placement.up);
+	vehicle->ApplyTurnForce(fYaw * vehicle->m_placement.up * flyingHandling->fYaw * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
+
+	float rX = pow(flyingHandling->vecTurnRes.x, CTimer::ms_fTimeStep);
+	float rY = pow(flyingHandling->vecTurnRes.y, CTimer::ms_fTimeStep);
+	float rZ = pow(flyingHandling->vecTurnRes.z, CTimer::ms_fTimeStep);
+	CVector vecTurnSpeed = Multiply3x3(vehicle->m_vecTurnSpeed, vehicle->m_placement);
+	float fResistanceMultiplier = powf(1.0f / (flyingHandling->vecSpeedRes.z * SQR(vecTurnSpeed.z) + 1.0f) * rZ, CTimer::ms_fTimeStep);
+	float fResistance = vecTurnSpeed.z * fResistanceMultiplier - vecTurnSpeed.z;
+	vecTurnSpeed.x *= rX;
+	vecTurnSpeed.y *= rY;
+	vecTurnSpeed.z *= fResistanceMultiplier;
+	//vehicle->m_vecTurnSpeed = Multiply3x3(vehicle->m_placement, vecTurnSpeed);
+	//vehicle->ApplyTurnForce(-vehicle->m_placement.right * fResistance * vehicle->m_fTurnMass, vehicle->m_placement.up + Multiply3x3(vehicle->m_placement, vehicle->m_vecCentreOfMass));
 }
 
 bool isPlayerInCar(CVehicle* vehicle) {
@@ -378,34 +445,12 @@ eOpcodeResult __stdcall setHover(CScript* script)
 	if (vehicle) {
 		if (Params[1].nVar == 1) {
 			HoverControl(vehicle);
-			//vehicle->FlyingControl(2);
-
-			/*//automobile->DoHoverSuspensionRatios();
-			mat.Attach(RwFrameGetMatrix(automobile->m_aCarNodes[CAR_WHEEL_RB]), false);
-			//mat.SetTranslate(mat.pos.x, mat.pos.y, mat.pos.z);
-			mat.SetRotateY((float)(-M_PI / 2.0f));
-			mat.Update();
-
-			mat.Attach(RwFrameGetMatrix(automobile->m_aCarNodes[CAR_WHEEL_LB]), false);
-			//mat.SetTranslate(mat.pos.x, mat.pos.y, mat.pos.z);
-			mat.SetRotateY((float)(M_PI / 2.0f));
-			mat.Update();
-
-			mat.Attach(RwFrameGetMatrix(automobile->m_aCarNodes[CAR_WHEEL_RF]), false);
-			//mat.SetTranslate(mat.pos.x, mat.pos.y, mat.pos.z);
-			mat.SetRotateY((float)(-M_PI / 2.0f));
-			mat.Update();
-
-			mat.Attach(RwFrameGetMatrix(automobile->m_aCarNodes[CAR_WHEEL_LF]), false);
-			//mat.SetTranslate(mat.pos.x, mat.pos.y, mat.pos.z);
-			mat.SetRotateY((float)(M_PI / 2.0f));
-			mat.Update();*/
-			//testcar->Teleport(CVector(0.0, 0.0, 0.0));
 		}
-		else
-		{
+		else if (Params[1].nVar == 2) {
+			DamagedHoverControl(vehicle);
+		}
+		else {
 			// Do nothing
-
 		}
 	}
 	return OR_CONTINUE;
@@ -621,6 +666,41 @@ void setGlow(CVehicle* vehicle, char* component, int glow) {
 	}
 }
 
+int getCurrentDigit(CVehicle* vehicle, char* component) {
+	char digitComponent[128];
+	for (int digit = 0; digit < 20; digit++) {
+		sprintf(digitComponent, "%s%d", component, digit);
+		getVisibility(vehicle, digitComponent);
+		if (visibility > 0) {
+			return digit;
+		}
+	}
+	return -1;
+}
+
+void digitOff(CVehicle* vehicle, char* component) {
+	char digitComponent[128];
+	int digit = getCurrentDigit(vehicle, component);
+	if (digit != -1) {
+		sprintf(digitComponent, "%s%d", component, digit);
+		setVisibility(vehicle, digitComponent, 0);
+	}
+}
+
+void digitOn(CVehicle* vehicle, char* component, int digit) {
+	if (digit == -1) {
+		digitOff(vehicle, component);
+		return;
+	}
+	char digitComponent[128];
+	sprintf(digitComponent, "%s%d", component, digit);
+	getVisibility(vehicle, digitComponent);
+	if (visibility == 0) {
+		digitOff(vehicle, component);
+		setVisibility(vehicle, digitComponent, 1);
+	}
+}
+
 eOpcodeResult __stdcall setCarStatus(CScript* script)
 {
 	script->Collect(2);
@@ -673,7 +753,7 @@ eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall isCarComponentVisibile(CScript* script)
+eOpcodeResult __stdcall isCarComponentVisible(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
@@ -682,7 +762,7 @@ eOpcodeResult __stdcall isCarComponentVisibile(CScript* script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall isCarComponentNotVisibile(CScript* script)
+eOpcodeResult __stdcall isCarComponentNotVisible(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
@@ -815,6 +895,22 @@ eOpcodeResult __stdcall fadeCarComponentIndexAlpha(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall carComponentDigitOff(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	digitOff(vehicle, Params[1].cVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall carComponentDigitOn(CScript* script)
+{
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	digitOn(vehicle, Params[1].cVar, Params[2].nVar);
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall getCarComponentAlpha(CScript* script)
 {
 	script->Collect(2);
@@ -910,19 +1006,6 @@ eOpcodeResult __stdcall getCarComponentRotation(CScript* script)
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[1].cVar);
 	if (frame) {
 		CMatrix cmatrix(&frame->modelling, false);
-		/*float sy = sqrtf(cmatrix.right.x * cmatrix.right.x + cmatrix.up.x * cmatrix.up.x);
-		bool singular = sy < 1e-6;
-
-		if (!singular) {
-			Params[0].fVar = degrees(atan2f(cmatrix.at.y, cmatrix.at.z));
-			Params[1].fVar = degrees(atan2f(-cmatrix.at.x, sy));
-			Params[2].fVar = degrees(atan2f(cmatrix.up.x, cmatrix.right.x));
-		}
-		else {
-			Params[0].fVar = degrees(atan2f(-cmatrix.up.z, cmatrix.up.y));
-			Params[1].fVar = degrees(atan2f(-cmatrix.at.x, sy));
-			Params[2].fVar = 0.0f;
-		}*/
 		Params[2].fVar = atan2f(cmatrix.right.y, cmatrix.up.y);
 		if (Params[2].fVar < 0.0f)
 			Params[2].fVar += (float)(2.0f * M_PI);
@@ -2320,7 +2403,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F3D, skiMode);
 		Opcodes::RegisterOpcode(0x3F3E, isWheelsOnGround);
 		Opcodes::RegisterOpcode(0x3F3F, isWheelsNotOnGround);
-		Opcodes::RegisterOpcode(0x3F40, isCarComponentVisibile);
+		Opcodes::RegisterOpcode(0x3F40, isCarComponentVisible);
 		Opcodes::RegisterOpcode(0x3F41, isCarComponentIndexVisible);
 		Opcodes::RegisterOpcode(0x3F42, getAtMatrix);
 		Opcodes::RegisterOpcode(0x3F43, getRightMatrix);
@@ -2333,10 +2416,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F4A, setCarComponentIndexColor);
 		Opcodes::RegisterOpcode(0x3F4B, updateHandling);
 		Opcodes::RegisterOpcode(0x3F4C, setBuildingComponentVisibility);
-		Opcodes::RegisterOpcode(0x3F50, isCarComponentNotVisibile);
+		Opcodes::RegisterOpcode(0x3F50, isCarComponentNotVisible);
 		Opcodes::RegisterOpcode(0x3F51, isCarComponentIndexNotVisible);
 		Opcodes::RegisterOpcode(0x3F52, fadeCarComponentAlpha);
 		Opcodes::RegisterOpcode(0x3F53, fadeCarComponentIndexAlpha);
+		Opcodes::RegisterOpcode(0x3F54, carComponentDigitOff);
+		Opcodes::RegisterOpcode(0x3F55, carComponentDigitOn);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
