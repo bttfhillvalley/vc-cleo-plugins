@@ -22,6 +22,7 @@
 #include "CTimer.h"
 #include "CTxdStore.h"
 #include "CWorld.h"
+#include "CRubbish.h"
 #include "cHandlingDataMgr.h"
 #include "eEntityStatus.h"
 #include "extensions\ScriptCommands.h"
@@ -51,8 +52,7 @@ struct GameSound {
 struct CarAttachments {
 	CVehicle* vehicle;
 	CVehicle* attached;
-	CVector offset{ 0.0, 0.0, 0.0 };
-	// TODO Rotation
+	CMatrix offset;
 };
 
 map<string, GameSound> soundMap;
@@ -1567,15 +1567,22 @@ eOpcodeResult __stdcall addTex(CScript* script) {
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall isAttached(CScript* script) {
+	script->Collect(1);
+	int index = Params[0].nVar;
+	script->UpdateCompareFlag(carAttachments.contains(index));
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall attachVehicle(CScript* script) {
-	script->Collect(5);
+	script->Collect(2);
 	int index = Params[0].nVar;
 	CVehicle* attached = CPools::GetVehicle(index);
 	CVehicle* vehicle = CPools::GetVehicle(Params[1].nVar);
 	if (vehicle && attached) {
 		carAttachments[index].vehicle = vehicle;
 		carAttachments[index].attached = attached;
-		carAttachments[index].offset = CVector(Params[2].fVar, Params[3].fVar, Params[4].fVar);
+		carAttachments[index].offset = Invert(vehicle->m_placement) * attached->m_placement;
 	}
 	return OR_CONTINUE;
 }
@@ -2448,6 +2455,19 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
 		//Reserving 0x3F18-0x3F1F for get command
+
+		Events::vehicleRenderEvent.before += [&](CVehicle* vehicle) {
+			for (auto const& [vehicle_id, attachment] : carAttachments) {
+				if (attachment.attached == vehicle) {
+					CMatrix matrix = attachment.vehicle->m_placement * attachment.offset;
+					attachment.attached->m_placement.up = matrix.up;
+					attachment.attached->m_placement.at = matrix.at;
+					attachment.attached->m_placement.right = matrix.right;
+					attachment.attached->m_placement.pos = matrix.pos;
+					attachment.attached->m_vecMoveSpeed = attachment.vehicle->m_vecMoveSpeed;
+				}
+			}
+		};
 		Events::initGameEvent += [] {
 			//patch::Nop(0x58E59B, 5, true);
 			//patch::Nop(0x58E611, 5, true);
@@ -2550,20 +2570,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					paused = false;
 				}
 			}
-			for (auto const& [vehicle_id, attachment] : carAttachments) {
-				CVector coords = Multiply3x3(attachment.vehicle->m_placement, attachment.offset) + attachment.vehicle->GetPosition();
-				attachment.attached->SetPosition(coords);
-				attachment.attached->m_placement.up.x = attachment.vehicle->m_placement.up.x;
-				attachment.attached->m_placement.up.y = attachment.vehicle->m_placement.up.y;
-				attachment.attached->m_placement.up.z = attachment.vehicle->m_placement.up.z;
-				attachment.attached->m_placement.right.x = attachment.vehicle->m_placement.right.x;
-				attachment.attached->m_placement.right.y = attachment.vehicle->m_placement.right.y;
-				attachment.attached->m_placement.right.z = attachment.vehicle->m_placement.right.z;
-				attachment.attached->m_placement.at.x = attachment.vehicle->m_placement.at.x;
-				attachment.attached->m_placement.at.y = attachment.vehicle->m_placement.at.y;
-				attachment.attached->m_placement.at.z = attachment.vehicle->m_placement.at.z;
-				attachment.attached->m_vecMoveSpeed = attachment.vehicle->m_vecMoveSpeed;
-			}
+
 
 			// Removes dynamically created objects.  Has to be here because game script tick causes them to flash briefly
 			for (auto item : removeObjectQueue) {
