@@ -151,6 +151,7 @@ void HoverControl(CVehicle* vehicle)
 	float fPitch = 0.0f;
 	float fRoll = 0.0f;
 	float fYaw = 0.0f;
+	float fUp = 1.0f;
 	tFlyingHandlingData* flyingHandling = vehicle->m_pFlyingHandling;
 	float rm = pow(flyingHandling->fMoveRes, CTimer::ms_fTimeStep);
 	if (vehicle->m_nState != 0 && vehicle->m_nState != 10) {
@@ -158,6 +159,9 @@ void HoverControl(CVehicle* vehicle)
 	}
 	vehicle->m_vecMoveSpeed *= rm;
 	float fUpSpeed = DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
+	float fAttitude = asin(vehicle->m_placement.up.z);
+	float fAttitudeUp = fAttitude + radians(90.0f);
+	float fHeading = atan2(vehicle->m_placement.up.y, vehicle->m_placement.up.x);
 	if (vehicle->m_nState == 0 || vehicle->m_nState == 10) {
 		fThrust = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
 		fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
@@ -171,18 +175,26 @@ void HoverControl(CVehicle* vehicle)
 		fYaw = CPad::GetPad(0)->GetCarGunLeftRight() / 128.0f;
 	}
 	else {
-		fThrust = -0.1f;
+		fThrust = -0.2f;
 		fYaw = 0.0f;
 		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
-		fRoll = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.right), -0.1f, 0.1f);
+		fRoll = Clamp(0.5f * -vehicle->m_placement.right.z, -0.1f, 0.1f);
 	}
-	if (fThrust < 0.0f)
-		fThrust *= 2.0f;
-	fThrust = flyingHandling->fThrust * fThrust + 0.95f;
-	fThrust -= flyingHandling->fThrustFallOff * fUpSpeed;
+	fThrust = flyingHandling->fThrust * fThrust;
 	if (vehicle->GetPosition().z > 1000.0f)
 		fThrust *= 10.0f / (vehicle->GetPosition().z - 70.0f);
+
 	vehicle->ApplyMoveForce(GRAVITY * vehicle->m_placement.at * fThrust * vehicle->m_fMass * CTimer::ms_fTimeStep);
+
+	// Hover
+	CVector upVector(cos(fAttitudeUp) * cos(fHeading), cos(fAttitudeUp) * sin(fHeading), sin(fAttitudeUp));
+	upVector.Normalise();
+
+	float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
+	fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
+	fUp *= cos(fAttitude);
+
+	vehicle->ApplyMoveForce(GRAVITY * upVector * fUp * vehicle->m_fMass * CTimer::ms_fTimeStep);
 
 	if (vehicle->m_placement.at.z > 0.0f) {
 		float upRight = Clamp(vehicle->m_placement.right.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
@@ -209,6 +221,11 @@ void HoverControl(CVehicle* vehicle)
 	float fSideSpeed = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.right);
 	float fSideSlipAccel = flyingHandling->fSideSlip * fSideSpeed * abs(fSideSpeed);
 	vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.right * fSideSlipAccel * CTimer::ms_fTimeStep);
+
+	fSideSpeed = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
+	fSideSlipAccel = flyingHandling->fSideSlip * fSideSpeed * abs(fSideSpeed);
+	vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.at * fSideSlipAccel * CTimer::ms_fTimeStep);
+
 	float fYawAccel = flyingHandling->fYawStab * fSideSpeed * abs(fSideSpeed) + flyingHandling->fYaw * fYaw;
 	vehicle->ApplyTurnForce(fYawAccel * vehicle->m_placement.right * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, -vehicle->m_placement.up);
 	vehicle->ApplyTurnForce(fYaw * vehicle->m_placement.up * flyingHandling->fYaw * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
@@ -1216,7 +1233,7 @@ eOpcodeResult __stdcall applyForwardForce(CScript* script)
 
 	if (vehicle) {
 		CVector force = vehicle->m_placement.up * Params[1].fVar;
-		vehicle->ApplyMoveForce(force.x, force.y, force.z);
+		vehicle->ApplyMoveForce(force);
 	}
 	return OR_CONTINUE;
 }
