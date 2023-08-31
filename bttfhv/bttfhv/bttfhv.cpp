@@ -143,7 +143,7 @@ inline float DotProduct(const CVector& v1, const CVector& v2)
 tScriptVar *Params;
 using namespace plugin;
 
-void HoverControl(CVehicle* vehicle)
+void HoverControl(CVehicle* vehicle, bool damaged)
 {
 	if (vehicle->m_pFlyingHandling == nullptr)
 		return;
@@ -180,18 +180,28 @@ void HoverControl(CVehicle* vehicle)
 		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
 		fRoll = Clamp(0.5f * -vehicle->m_placement.right.z, -0.1f, 0.1f);
 	}
-	fThrust = flyingHandling->fThrust * fThrust;
-	if (vehicle->GetPosition().z > 1000.0f)
-		fThrust *= 10.0f / (vehicle->GetPosition().z - 70.0f);
+	if (!damaged) {
+		fThrust = flyingHandling->fThrust * fThrust;
+		if (vehicle->GetPosition().z > 1000.0f)
+			fThrust *= 10.0f / (vehicle->GetPosition().z - 70.0f);
 
-	vehicle->ApplyMoveForce(GRAVITY * vehicle->m_placement.at * fThrust * vehicle->m_fMass * CTimer::ms_fTimeStep);
+		vehicle->ApplyMoveForce(GRAVITY * vehicle->m_placement.at * fThrust * vehicle->m_fMass * CTimer::ms_fTimeStep);
+	}
+	else {
+		fPitch = Clamp(fPitch * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.x), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
+		fRoll = Clamp(fRoll * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.y), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
+		fYaw = Clamp(fYaw * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.z), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
+		fUp = 0.25;
+	}
 
 	// Hover
 	CVector upVector(cos(fAttitudeUp) * cos(fHeading), cos(fAttitudeUp) * sin(fHeading), sin(fAttitudeUp));
 	upVector.Normalise();
 
-	float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
-	fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
+	if (!damaged) {
+		float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
+		fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
+	}
 	fUp *= cos(fAttitude);
 
 	vehicle->ApplyMoveForce(GRAVITY * upVector * fUp * vehicle->m_fMass * CTimer::ms_fTimeStep);
@@ -222,93 +232,27 @@ void HoverControl(CVehicle* vehicle)
 	float fSideSlipAccel = flyingHandling->fSideSlip * fSideSpeed * abs(fSideSpeed);
 	vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.right * fSideSlipAccel * CTimer::ms_fTimeStep);
 
-	fSideSpeed = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
-	fSideSlipAccel = flyingHandling->fSideSlip * fSideSpeed * abs(fSideSpeed);
-	vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.at * fSideSlipAccel * CTimer::ms_fTimeStep);
+	float fSideSpeedB = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
+	float fSideSlipAccelB = flyingHandling->fSideSlip * fSideSpeedB * abs(fSideSpeedB);
+	vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.at * fSideSlipAccelB * CTimer::ms_fTimeStep);
 
 	float fYawAccel = flyingHandling->fYawStab * fSideSpeed * abs(fSideSpeed) + flyingHandling->fYaw * fYaw;
 	vehicle->ApplyTurnForce(fYawAccel * vehicle->m_placement.right * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, -vehicle->m_placement.up);
 	vehicle->ApplyTurnForce(fYaw * vehicle->m_placement.up * flyingHandling->fYaw * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
+	if (!damaged) {
+		float rX = pow(flyingHandling->vecTurnRes.x, CTimer::ms_fTimeStep);
+		float rY = pow(flyingHandling->vecTurnRes.y, CTimer::ms_fTimeStep);
+		float rZ = pow(flyingHandling->vecTurnRes.z, CTimer::ms_fTimeStep);
+		CVector vecTurnSpeed = Multiply3x3(vehicle->m_vecTurnSpeed, vehicle->m_placement);
 
-	float rX = pow(flyingHandling->vecTurnRes.x, CTimer::ms_fTimeStep);
-	float rY = pow(flyingHandling->vecTurnRes.y, CTimer::ms_fTimeStep);
-	float rZ = pow(flyingHandling->vecTurnRes.z, CTimer::ms_fTimeStep);
-	CVector vecTurnSpeed = Multiply3x3(vehicle->m_vecTurnSpeed, vehicle->m_placement);
-	float fResistanceMultiplier = powf(1.0f / (flyingHandling->vecSpeedRes.z * SQR(vecTurnSpeed.z) + 1.0f) * rZ, CTimer::ms_fTimeStep);
-	float fResistance = vecTurnSpeed.z * fResistanceMultiplier - vecTurnSpeed.z;
-	vecTurnSpeed.x *= rX;
-	vecTurnSpeed.y *= rY;
-	vecTurnSpeed.z *= fResistanceMultiplier;
-	vehicle->m_vecTurnSpeed = Multiply3x3(vehicle->m_placement, vecTurnSpeed);
-	vehicle->ApplyTurnForce(-vehicle->m_placement.right * fResistance * vehicle->m_fTurnMass, vehicle->m_placement.up + Multiply3x3(vehicle->m_placement, vehicle->m_vecCentreOfMass));
-}
-
-void DamagedHoverControl(CVehicle * vehicle)
-{
-	if (vehicle->m_pFlyingHandling == nullptr)
-		return;
-	float fPitch = 0.0f;
-	float fRoll = 0.0f;
-	float fYaw = 0.0f;
-	tFlyingHandlingData* flyingHandling = vehicle->m_pFlyingHandling;
-	float rm = pow(flyingHandling->fMoveRes, CTimer::ms_fTimeStep);
-	if (vehicle->m_nState != 0 && vehicle->m_nState != 10) {
-		rm *= 0.97f;
+		float fResistanceMultiplier = powf(1.0f / (flyingHandling->vecSpeedRes.z * SQR(vecTurnSpeed.z) + 1.0f) * rZ, CTimer::ms_fTimeStep);
+		float fResistance = vecTurnSpeed.z * fResistanceMultiplier - vecTurnSpeed.z;
+		vecTurnSpeed.x *= rX;
+		vecTurnSpeed.y *= rY;
+		vecTurnSpeed.z *= fResistanceMultiplier;
+		vehicle->m_vecTurnSpeed = Multiply3x3(vehicle->m_placement, vecTurnSpeed);
+		vehicle->ApplyTurnForce(-vehicle->m_placement.right * fResistance * vehicle->m_fTurnMass, vehicle->m_placement.up + Multiply3x3(vehicle->m_placement, vehicle->m_vecCentreOfMass));
 	}
-	vehicle->m_vecMoveSpeed *= rm;
-	float fUpSpeed = DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
-
-	fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
-	if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
-		// Do nothing
-	}
-	else if (abs(CPad::GetPad(0)->LookAroundUpDown()) > 1.0f) {
-		fPitch = CPad::GetPad(0)->LookAroundUpDown() / 128.0f;
-	}
-	fRoll = -CPad::GetPad(0)->GetSteeringLeftRight() / 128.0f;
-	fYaw = CPad::GetPad(0)->GetCarGunLeftRight() / 128.0f;
-
-
-	if (vehicle->m_placement.at.z > 0.0f) {
-		float upRight = Clamp(vehicle->m_placement.right.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
-		float upImpulseRight = -upRight * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
-		vehicle->ApplyTurnForce(upImpulseRight * vehicle->m_placement.at, vehicle->m_placement.right);
-
-		float upFwd = Clamp(vehicle->m_placement.up.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
-		float upImpulseFwd = -upFwd * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
-		vehicle->ApplyTurnForce(upImpulseFwd * vehicle->m_placement.at, vehicle->m_placement.up);
-	}
-	else {
-		float upRight = vehicle->m_placement.right.z < 0.0f ? -flyingHandling->fFormLift : flyingHandling->fFormLift;
-		float upImpulseRight = -upRight * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
-		vehicle->ApplyTurnForce(upImpulseRight * vehicle->m_placement.at, vehicle->m_placement.right);
-
-		float upFwd = vehicle->m_placement.up.z < 0.0f ? -flyingHandling->fFormLift : flyingHandling->fFormLift;
-		float upImpulseFwd = -upFwd * flyingHandling->fAttackLift * vehicle->m_fTurnMass * CTimer::ms_fTimeStep;
-		vehicle->ApplyTurnForce(upImpulseFwd * vehicle->m_placement.at, vehicle->m_placement.up);
-	}
-
-	vehicle->ApplyTurnForce(fPitch * vehicle->m_placement.at * flyingHandling->fPitch * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.up);
-	vehicle->ApplyTurnForce(fRoll * vehicle->m_placement.at * flyingHandling->fRoll * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
-
-	float fSideSpeed = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.right);
-	float fSideSlipAccel = flyingHandling->fSideSlip * fSideSpeed * abs(fSideSpeed);
-	//vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.right * fSideSlipAccel * CTimer::ms_fTimeStep);
-	float fYawAccel = flyingHandling->fYawStab * fSideSpeed * abs(fSideSpeed) + flyingHandling->fYaw * fYaw;
-	vehicle->ApplyTurnForce(fYawAccel * vehicle->m_placement.right * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, -vehicle->m_placement.up);
-	vehicle->ApplyTurnForce(fYaw * vehicle->m_placement.up * flyingHandling->fYaw * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, vehicle->m_placement.right);
-
-	float rX = pow(flyingHandling->vecTurnRes.x, CTimer::ms_fTimeStep);
-	float rY = pow(flyingHandling->vecTurnRes.y, CTimer::ms_fTimeStep);
-	float rZ = pow(flyingHandling->vecTurnRes.z, CTimer::ms_fTimeStep);
-	CVector vecTurnSpeed = Multiply3x3(vehicle->m_vecTurnSpeed, vehicle->m_placement);
-	float fResistanceMultiplier = powf(1.0f / (flyingHandling->vecSpeedRes.z * SQR(vecTurnSpeed.z) + 1.0f) * rZ, CTimer::ms_fTimeStep);
-	float fResistance = vecTurnSpeed.z * fResistanceMultiplier - vecTurnSpeed.z;
-	vecTurnSpeed.x *= rX;
-	vecTurnSpeed.y *= rY;
-	vecTurnSpeed.z *= fResistanceMultiplier;
-	//vehicle->m_vecTurnSpeed = Multiply3x3(vehicle->m_placement, vecTurnSpeed);
-	//vehicle->ApplyTurnForce(-vehicle->m_placement.right * fResistance * vehicle->m_fTurnMass, vehicle->m_placement.up + Multiply3x3(vehicle->m_placement, vehicle->m_vecCentreOfMass));
 }
 
 bool isPlayerInCar(CVehicle* vehicle) {
@@ -461,10 +405,10 @@ eOpcodeResult __stdcall setHover(CScript* script)
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	if (vehicle) {
 		if (Params[1].nVar == 1) {
-			HoverControl(vehicle);
+			HoverControl(vehicle, false);
 		}
 		else if (Params[1].nVar == 2) {
-			DamagedHoverControl(vehicle);
+			HoverControl(vehicle, true);
 		}
 		else {
 			// Do nothing
