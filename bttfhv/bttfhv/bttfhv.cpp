@@ -191,7 +191,7 @@ void HoverControl(CVehicle* vehicle, bool damaged)
 		fPitch = Clamp(fPitch * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.x), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
 		fRoll = Clamp(fRoll * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.y), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
 		fYaw = Clamp(fYaw * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.z), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
-		fUp = 0.25;
+		fUp = 0.4f;
 	}
 
 	// Hover
@@ -252,6 +252,11 @@ void HoverControl(CVehicle* vehicle, bool damaged)
 		vecTurnSpeed.z *= fResistanceMultiplier;
 		vehicle->m_vecTurnSpeed = Multiply3x3(vehicle->m_placement, vecTurnSpeed);
 		vehicle->ApplyTurnForce(-vehicle->m_placement.right * fResistance * vehicle->m_fTurnMass, vehicle->m_placement.up + Multiply3x3(vehicle->m_placement, vehicle->m_vecCentreOfMass));
+
+		if (FindPlayerVehicle() == vehicle) {
+			CPlayerInfo* player = FindPlayerPed()->GetPlayerInfoForThisPlayerPed();
+			player->m_nUpsideDownCounter = 0;
+		}
 	}
 }
 
