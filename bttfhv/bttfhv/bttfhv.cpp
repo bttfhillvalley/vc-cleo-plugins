@@ -143,7 +143,7 @@ inline float DotProduct(const CVector& v1, const CVector& v2)
 tScriptVar *Params;
 using namespace plugin;
 
-void HoverControl(CVehicle* vehicle, bool damaged)
+void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 {
 	if (vehicle->m_pFlyingHandling == nullptr)
 		return;
@@ -152,6 +152,10 @@ void HoverControl(CVehicle* vehicle, bool damaged)
 	float fRoll = 0.0f;
 	float fYaw = 0.0f;
 	float fUp = 1.0f;
+	float fLandingSpeed = 0.1f;
+	if (landing) {
+		fUp -= fLandingSpeed;
+	}
 	tFlyingHandlingData* flyingHandling = vehicle->m_pFlyingHandling;
 	float rm = pow(flyingHandling->fMoveRes, CTimer::ms_fTimeStep);
 	if (vehicle->m_nState != 0 && vehicle->m_nState != 10) {
@@ -173,9 +177,22 @@ void HoverControl(CVehicle* vehicle, bool damaged)
 		}
 		fRoll = -CPad::GetPad(0)->GetSteeringLeftRight() / 128.0f;
 		fYaw = CPad::GetPad(0)->GetCarGunLeftRight() / 128.0f;
+		if (landing) {
+			if (vehicle->m_placement.at.z > 0.0f) {
+				fThrust = Clamp(fThrust, -1.0f * abs(cos(fAttitude)), 0.0f);
+			}
+			else {
+				fThrust = Clamp(fThrust, 0.0f, 1.0f * abs(cos(fAttitude)));
+			}
+		}
 	}
 	else {
-		fThrust = -0.2f;
+		if (landing) {
+			fThrust = 0.0f;
+		}
+		else {
+			fThrust = -fLandingSpeed / flyingHandling->fThrust;
+		}
 		fYaw = 0.0f;
 		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
 		fRoll = Clamp(0.5f * -vehicle->m_placement.right.z, -0.1f, 0.1f);
@@ -235,6 +252,13 @@ void HoverControl(CVehicle* vehicle, bool damaged)
 	float fSideSpeedB = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
 	float fSideSlipAccelB = flyingHandling->fSideSlip * fSideSpeedB * abs(fSideSpeedB);
 	vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.at * fSideSlipAccelB * CTimer::ms_fTimeStep);
+
+	if (landing) {
+		float fSideSpeedC = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up);
+		float fSideSlipAccelC = flyingHandling->fSideSlip * fSideSpeedC * abs(fSideSpeedC);
+		fSideSlipAccelC /= 20.0f;
+		vehicle->ApplyMoveForce(vehicle->m_fMass* vehicle->m_placement.up* fSideSlipAccelC* CTimer::ms_fTimeStep);
+	}
 
 	float fYawAccel = flyingHandling->fYawStab * fSideSpeed * abs(fSideSpeed) + flyingHandling->fYaw * fYaw;
 	vehicle->ApplyTurnForce(fYawAccel * vehicle->m_placement.right * vehicle->m_fTurnMass * CTimer::ms_fTimeStep, -vehicle->m_placement.up);
@@ -406,18 +430,12 @@ eOpcodeResult __stdcall getCurrentGear(CScript* script)
 
 eOpcodeResult __stdcall setHover(CScript* script)
 {
-	script->Collect(2);
+	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	bool landing = Params[1].nVar != 0;
+	bool damage = Params[2].nVar != 0;
 	if (vehicle) {
-		if (Params[1].nVar == 1) {
-			HoverControl(vehicle, false);
-		}
-		else if (Params[1].nVar == 2) {
-			HoverControl(vehicle, true);
-		}
-		else {
-			// Do nothing
-		}
+		HoverControl(vehicle, landing, damage);
 	}
 	return OR_CONTINUE;
 }
