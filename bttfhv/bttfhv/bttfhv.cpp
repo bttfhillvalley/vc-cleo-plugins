@@ -158,15 +158,11 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 	}
 	tFlyingHandlingData* flyingHandling = vehicle->m_pFlyingHandling;
 	float rm = pow(flyingHandling->fMoveRes, CTimer::ms_fTimeStep);
-	if (vehicle->m_nState != 0 && vehicle->m_nState != 10) {
-		rm *= 0.97f;
-	}
-	vehicle->m_vecMoveSpeed *= rm;
 	float fUpSpeed = DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
 	float fAttitude = asin(vehicle->m_placement.up.z);
 	float fAttitudeUp = fAttitude + radians(90.0f);
 	float fHeading = atan2(vehicle->m_placement.up.y, vehicle->m_placement.up.x);
-	if (vehicle->m_nState == 0 || vehicle->m_nState == 10) {
+	if (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE) {
 		fThrust = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
 		fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
 		if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
@@ -186,7 +182,7 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 			}
 		}
 	}
-	else {
+	else if (vehicle->m_nState == STATUS_PHYSICS) {
 		if (landing) {
 			fThrust = 0.0f;
 		}
@@ -196,7 +192,9 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 		fYaw = 0.0f;
 		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
 		fRoll = Clamp(0.5f * -vehicle->m_placement.right.z, -0.1f, 0.1f);
+		rm *= 0.97f;
 	}
+	vehicle->m_vecMoveSpeed *= rm;
 	if (!damaged) {
 		fThrust = flyingHandling->fThrust * fThrust;
 		if (vehicle->GetPosition().z > 1000.0f)
@@ -208,20 +206,25 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 		fPitch = Clamp(fPitch * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.x), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
 		fRoll = Clamp(fRoll * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.y), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
 		fYaw = Clamp(fYaw * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.z), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
+	}
+
+	if (damaged) {
 		fUp = 0.4f;
 	}
 
-	// Hover
-	CVector upVector(cos(fAttitudeUp) * cos(fHeading), cos(fAttitudeUp) * sin(fHeading), sin(fAttitudeUp));
-	upVector.Normalise();
+	if (vehicle->m_nState == STATUS_PLAYER || vehicle->m_nState == STATUS_PLAYER_REMOTE || vehicle->m_nState == STATUS_PHYSICS) {
+		// Hover
+		CVector upVector(cos(fAttitudeUp) * cos(fHeading), cos(fAttitudeUp) * sin(fHeading), sin(fAttitudeUp));
+		upVector.Normalise();
 
-	if (!damaged) {
-		float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
-		fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
+		if (!damaged) {
+			float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
+			fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
+		}
+		fUp *= cos(fAttitude);
+
+		vehicle->ApplyMoveForce(GRAVITY * upVector * fUp * vehicle->m_fMass * CTimer::ms_fTimeStep);
 	}
-	fUp *= cos(fAttitude);
-
-	vehicle->ApplyMoveForce(GRAVITY * upVector * fUp * vehicle->m_fMass * CTimer::ms_fTimeStep);
 
 	if (vehicle->m_placement.at.z > 0.0f) {
 		float upRight = Clamp(vehicle->m_placement.right.z, -flyingHandling->fFormLift, flyingHandling->fFormLift);
@@ -1161,7 +1164,7 @@ eOpcodeResult __stdcall removeRemote(CScript* script)
 
 	if (vehicle) {
 		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-		automobile->m_nState = STATUS_ABANDONED;  // Set remote mode
+		automobile->m_nState = STATUS_PHYSICS;  // Set remote mode
 		automobile->m_nVehicleFlags.bEngineOn = 0;
 	}
 	CWorld::Players[CWorld::PlayerInFocus].m_pRemoteVehicle = NULL;
