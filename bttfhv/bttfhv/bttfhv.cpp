@@ -1225,10 +1225,15 @@ eOpcodeResult __stdcall getWheelStatus(CScript* script)
 	script->Collect(1);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	CAutomobile* automobile;
-	int status = -1;
+	int nWheels = 4;
+	unsigned char status = -1;
 	if (vehicle) {
+		status = 0;
 		automobile = reinterpret_cast<CAutomobile*>(vehicle);
-		status = automobile->m_carDamage.GetWheelStatus(0);
+		for (int i = 0; i < nWheels; i++) {
+			status <<= 2;
+			status |= automobile->m_carDamage.GetWheelStatus(i);
+		}
 	}
 	Params[0].nVar = status;
 	script->Store(1);
@@ -1240,15 +1245,14 @@ eOpcodeResult __stdcall setWheelStatus(CScript* script)
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	CAutomobile* automobile;
+	int nWheels = 4;
 	if (vehicle) {
 		automobile = reinterpret_cast<CAutomobile*>(vehicle);
 		int status = Params[1].nVar;
-		automobile->m_carDamage.SetWheelStatus(0, status);
-		automobile->m_carDamage.SetWheelStatus(1, status);
-		automobile->m_carDamage.SetWheelStatus(2, status);
-		automobile->m_carDamage.SetWheelStatus(3, status);
-		if (status == 0) {
-			automobile->m_carDamage.uDamId = 0;
+		for (int i = nWheels - 1; i >= 0; i--) {
+			int wStatus = status & 0b11;
+			automobile->m_carDamage.SetWheelStatus(i, wStatus);
+			status >>= 2;
 		}
 	}
 	return OR_CONTINUE;
