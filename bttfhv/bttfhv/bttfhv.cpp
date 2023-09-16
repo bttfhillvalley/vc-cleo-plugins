@@ -16,6 +16,7 @@
 #include "CFileMgr.h"
 #include "CMenuManager.h"
 #include "CModelInfo.h"
+#include "CParticle.h"
 #include "CPointLights.h"
 #include "CPools.h"
 #include "CSimpleModelInfo.h"
@@ -30,6 +31,52 @@
 #define GRAVITY (0.008f)
 #define Clamp(v, low, high) ((v) < (low) ? (low) : (v) > (high) ? (high) : (v))
 #define SQR(x) ((x) * (x))
+
+enum {
+	CARWHEEL_FRONT_LEFT,
+	CARWHEEL_REAR_LEFT,
+	CARWHEEL_FRONT_RIGHT,
+	CARWHEEL_REAR_RIGHT
+};
+
+enum eSurfaceType
+{
+	SURFACE_DEFAULT,
+	SURFACE_TARMAC,
+	SURFACE_GRASS,
+	SURFACE_GRAVEL,
+	SURFACE_MUD_DRY,
+	SURFACE_PAVEMENT,
+	SURFACE_CAR,
+	SURFACE_GLASS,
+	SURFACE_TRANSPARENT_CLOTH,
+	SURFACE_GARAGE_DOOR,
+	SURFACE_CAR_PANEL,
+	SURFACE_THICK_METAL_PLATE,
+	SURFACE_SCAFFOLD_POLE,
+	SURFACE_LAMP_POST,
+	SURFACE_FIRE_HYDRANT,
+	SURFACE_GIRDER,
+	SURFACE_METAL_CHAIN_FENCE,
+	SURFACE_PED,
+	SURFACE_SAND,
+	SURFACE_WATER,
+	SURFACE_WOOD_CRATES,
+	SURFACE_WOOD_BENCH,
+	SURFACE_WOOD_SOLID,
+	SURFACE_RUBBER,
+	SURFACE_PLASTIC,
+	SURFACE_HEDGE,
+	SURFACE_STEEP_CLIFF,
+	SURFACE_CONTAINER,
+	SURFACE_NEWS_VENDOR,
+	SURFACE_WHEELBASE,
+	SURFACE_CARDBOARDBOX,
+	SURFACE_TRANSPARENT_STONE,
+	SURFACE_METAL_GATE,
+	SURFACE_SAND_BEACH,
+	SURFACE_CONCRETE_BEACH,
+};
 
 using namespace irrklang;
 using namespace plugin;
@@ -1258,6 +1305,45 @@ eOpcodeResult __stdcall setWheelStatus(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall wheelSparks(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		for (int i = 0; i < 4; i++) {
+			if (automobile->fWheelSuspDist[i] < 1.0f) {
+				static float speedSq;
+				speedSq = automobile->m_vecMoveSpeed.Magnitude();
+				if (speedSq > SQR(0.1f) &&
+					automobile->stWheels[i].surfaceB != SURFACE_GRASS &&
+					automobile->stWheels[i].surfaceB != SURFACE_MUD_DRY &&
+					automobile->stWheels[i].surfaceB != SURFACE_SAND &&
+					automobile->stWheels[i].surfaceB != SURFACE_SAND_BEACH &&
+					automobile->stWheels[i].surfaceB != SURFACE_WATER) {
+					CVector normalSpeed = automobile->stWheels[i].vecWheelAngle * DotProduct(automobile->stWheels[i].vecWheelAngle, automobile->m_vecMoveSpeed);
+					CVector frictionSpeed = automobile->m_vecMoveSpeed - normalSpeed;
+					if (i == CARWHEEL_FRONT_LEFT || i == CARWHEEL_REAR_LEFT)
+						frictionSpeed -= 0.05f * automobile->m_placement.right;
+					else
+						frictionSpeed += 0.05f * automobile->m_placement.right;
+					CVector sparkDir = 0.25f * frictionSpeed;
+					CParticle::AddParticle(PARTICLE_SPARK_SMALL, automobile->stWheels[i].vecWheelPos, sparkDir, NULL, 0.0f, 0, 0, 0, 0);
+
+					if (speedSq > 0.04f)
+						CParticle::AddParticle(PARTICLE_SPARK_SMALL, automobile->stWheels[i].vecWheelPos, sparkDir, NULL, 0.0f, 0, 0, 0, 0);
+					if (speedSq > 0.16f) {
+						CParticle::AddParticle(PARTICLE_SPARK_SMALL, automobile->stWheels[i].vecWheelPos, sparkDir, NULL, 0.0f, 0, 0, 0, 0);
+						CParticle::AddParticle(PARTICLE_SPARK_SMALL, automobile->stWheels[i].vecWheelPos, sparkDir, NULL, 0.0f, 0, 0, 0, 0);
+					}
+				}
+			}
+		}
+	}
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall setCarCollision(CScript* script)
 {
 	script->Collect(2);
@@ -1876,7 +1962,6 @@ eOpcodeResult __stdcall isSoundStoppedIndex(CScript* script)
 	return OR_CONTINUE;
 }
 
-
 void __playSound(string key) {
 	char fullpath[128];
 	snprintf(fullpath, 128, ".\\sound\\%s", Params[0].cVar);
@@ -2348,7 +2433,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F08, addBuilding);
 		Opcodes::RegisterOpcode(0x3F09, removeBuilding);
 		Opcodes::RegisterOpcode(0x3F0A, oldReplaceTex);
-		Opcodes::RegisterOpcode(0x3F0B, replaceTex);
+		Opcodes::RegisterOpcode(0x3F0B, wheelSparks);
 		Opcodes::RegisterOpcode(0x3F0C, setCarCollision);
 		Opcodes::RegisterOpcode(0x3F0D, getDoorAngle);
 		Opcodes::RegisterOpcode(0x3F0E, getWheelAngle);
