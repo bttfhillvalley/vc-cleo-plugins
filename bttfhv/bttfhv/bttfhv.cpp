@@ -31,6 +31,8 @@
 #define GRAVITY (0.008f)
 #define Clamp(v, low, high) ((v) < (low) ? (low) : (v) > (high) ? (high) : (v))
 #define SQR(x) ((x) * (x))
+#define BODY_PIVOT (0.364084f)
+#define DOOR_PIVOT (0.105361f)
 
 enum {
 	CARWHEEL_FRONT_LEFT,
@@ -209,7 +211,8 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 	float fAttitude = asin(vehicle->m_placement.up.z);
 	float fAttitudeUp = fAttitude + radians(90.0f);
 	float fHeading = atan2(vehicle->m_placement.up.y, vehicle->m_placement.up.x);
-	if (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE) {
+
+	if (!CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE)) {
 		fThrust = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
 		fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
 		if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
@@ -307,7 +310,7 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 		float fSideSpeedC = -DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up);
 		float fSideSlipAccelC = flyingHandling->fSideSlip * fSideSpeedC * abs(fSideSpeedC);
 		fSideSlipAccelC /= 20.0f;
-		vehicle->ApplyMoveForce(vehicle->m_fMass* vehicle->m_placement.up* fSideSlipAccelC* CTimer::ms_fTimeStep);
+		vehicle->ApplyMoveForce(vehicle->m_fMass * vehicle->m_placement.up * fSideSlipAccelC * CTimer::ms_fTimeStep);
 	}
 
 	float fYawAccel = flyingHandling->fYawStab * fSideSpeed * abs(fSideSpeed) + flyingHandling->fYaw * fYaw;
@@ -345,6 +348,36 @@ bool isPlayerInCar(CVehicle* vehicle) {
 bool isPlayerInModel(int model) {
 	CPlayerInfo player = CWorld::Players[CWorld::PlayerInFocus];
 	return player.m_pPed->m_bInVehicle && player.m_pPed->m_pVehicle->m_nModelIndex == model;
+}
+
+eOpcodeResult __stdcall getArcsin(CScript* script) {
+	script->Collect(1);
+	Params[0].fVar = degrees(asinf(Params[0].fVar));
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getArccos(CScript* script) {
+	script->Collect(1);
+	Params[0].fVar = degrees(acosf(Params[0].fVar));
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+
+eOpcodeResult __stdcall getTan(CScript* script) {
+	script->Collect(1);
+	Params[0].fVar = tanf(radians(Params[0].fVar));
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+
+eOpcodeResult __stdcall getArctan(CScript* script) {
+	script->Collect(1);
+	Params[0].fVar = degrees(atanf(Params[0].fVar));
+	script->Store(1);
+	return OR_CONTINUE;
 }
 
 eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
@@ -597,7 +630,7 @@ eOpcodeResult __stdcall isWheelsNotOnGround(CScript* script) {
 
 // Car stuff
 // Helper methods
-void setVisibility(CEntity* model, char* component, int visible) {
+void setVisibility(CEntity* model, const char* component, int visible) {
 	visibility = 0;
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
@@ -608,7 +641,7 @@ void setVisibility(CEntity* model, char* component, int visible) {
 	}
 }
 
-void getVisibility(CEntity* model, char* component) {
+void getVisibility(CEntity* model, const char* component) {
 	visibility = 0;
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
@@ -616,7 +649,7 @@ void getVisibility(CEntity* model, char* component) {
 	}
 }
 
-void moveComponent(CEntity* model, char* component, float x, float y, float z) {
+void moveComponent(CEntity* model, const char* component, float x, float y, float z) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
 		CMatrix cmmatrix(&frame->modelling, false);
@@ -625,7 +658,7 @@ void moveComponent(CEntity* model, char* component, float x, float y, float z) {
 	}
 }
 
-void rotateComponent(CEntity* model, char* component, float rx, float ry, float rz) {
+void rotateComponent(CEntity* model, const char* component, float rx, float ry, float rz) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
 		CMatrix cmatrix(&frame->modelling, false);
@@ -636,7 +669,7 @@ void rotateComponent(CEntity* model, char* component, float rx, float ry, float 
 	}
 }
 
-void setColor(CVehicle* vehicle, char* component, int red, int green, int blue) {
+void setColor(CVehicle* vehicle, const char* component, int red, int green, int blue) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	if (frame) {
 		RpAtomic* atomic;
@@ -649,7 +682,7 @@ void setColor(CVehicle* vehicle, char* component, int red, int green, int blue) 
 	}
 }
 
-void setAlpha(CVehicle* vehicle, char* component, int alpha) {
+void setAlpha(CVehicle* vehicle, const char* component, int alpha) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	if (frame) {
 		RpAtomic* atomic;
@@ -661,7 +694,7 @@ void setAlpha(CVehicle* vehicle, char* component, int alpha) {
 	}
 }
 
-RwUInt8 getAlpha(CVehicle* vehicle, char* component) {
+RwUInt8 getAlpha(CVehicle* vehicle, const char* component) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	RwUInt8 alpha = 0;
 	if (frame) {
@@ -674,7 +707,7 @@ RwUInt8 getAlpha(CVehicle* vehicle, char* component) {
 	return alpha;
 }
 
-void fadeAlpha(CVehicle* vehicle, char* component, int target, int fade) {
+void fadeAlpha(CVehicle* vehicle, const char* component, int target, int fade) {
 	int alpha = getAlpha(vehicle, component);
 	target = max(0, target);
 	target = min(target, 255);
@@ -689,7 +722,7 @@ void fadeAlpha(CVehicle* vehicle, char* component, int target, int fade) {
 	setAlpha(vehicle, component, alpha);
 }
 
-void setGlow(CVehicle* vehicle, char* component, int glow) {
+void setGlow(CVehicle* vehicle, const char* component, int glow) {
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	if (frame) {
 		RpAtomic* atomic;
@@ -700,7 +733,7 @@ void setGlow(CVehicle* vehicle, char* component, int glow) {
 	}
 }
 
-int getCurrentDigit(CVehicle* vehicle, char* component) {
+int getCurrentDigit(CVehicle* vehicle, const char* component) {
 	char digitComponent[128];
 	for (int digit = 0; digit < 20; digit++) {
 		sprintf(digitComponent, "%s%d", component, digit);
@@ -712,7 +745,7 @@ int getCurrentDigit(CVehicle* vehicle, char* component) {
 	return -1;
 }
 
-void digitOff(CVehicle* vehicle, char* component) {
+void digitOff(CVehicle* vehicle, const char* component) {
 	char digitComponent[128];
 	int digit = getCurrentDigit(vehicle, component);
 	if (digit != -1) {
@@ -721,7 +754,7 @@ void digitOff(CVehicle* vehicle, char* component) {
 	}
 }
 
-void digitOn(CVehicle* vehicle, char* component, int digit) {
+void digitOn(CVehicle* vehicle, const char* component, int digit) {
 	if (digit == -1) {
 		digitOff(vehicle, component);
 		return;
@@ -770,15 +803,6 @@ eOpcodeResult __stdcall getCarLights(CScript* script)
 }
 
 // Opcodes
-eOpcodeResult __stdcall setPlayerVisibility(CScript* script)
-{
-	script->Collect(1);
-	CPed* player;
-	Command<Commands::GET_PLAYER_CHAR>(0, &player);
-	player->SetRwObjectAlpha(Params[0].nVar);
-	return OR_CONTINUE;
-}
-
 eOpcodeResult __stdcall setCarComponentVisibility(CScript* script)
 {
 	script->Collect(3);
@@ -1060,13 +1084,14 @@ eOpcodeResult __stdcall getCarComponentRotation(CScript* script)
 	return OR_CONTINUE;
 }
 
+
 eOpcodeResult __stdcall rotateBonnet(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	if (vehicle) {
 		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-		automobile->OpenDoor(CAR_BONNET, BONNET, Params[1].fVar);
+		automobile->OpenDoor(CAR_DOOR_LF, DOOR_FRONT_LEFT, Params[1].fVar);
 	}
 	return OR_CONTINUE;
 }
@@ -1307,28 +1332,30 @@ eOpcodeResult __stdcall setWheelStatus(CScript* script)
 
 eOpcodeResult __stdcall wheelSparks(CScript* script)
 {
-	script->Collect(1);
+	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	float friction = Params[1].fVar;
+	int ignoreLand = Params[3].nVar;
 	CAutomobile* automobile;
 	if (vehicle) {
 		automobile = reinterpret_cast<CAutomobile*>(vehicle);
 		for (int i = 0; i < 4; i++) {
-			if (automobile->fWheelSuspDist[i] < 1.0f) {
+			if (ignoreLand || automobile->fWheelSuspDist[i] < 1.0f) {
 				static float speedSq;
 				speedSq = automobile->m_vecMoveSpeed.Magnitude();
-				if (speedSq > SQR(0.1f) &&
+				if (speedSq > SQR(0.1f) && (ignoreLand || (
 					automobile->stWheels[i].surfaceB != SURFACE_GRASS &&
 					automobile->stWheels[i].surfaceB != SURFACE_MUD_DRY &&
 					automobile->stWheels[i].surfaceB != SURFACE_SAND &&
 					automobile->stWheels[i].surfaceB != SURFACE_SAND_BEACH &&
-					automobile->stWheels[i].surfaceB != SURFACE_WATER) {
+					automobile->stWheels[i].surfaceB != SURFACE_WATER))) {
 					CVector normalSpeed = automobile->stWheels[i].vecWheelAngle * DotProduct(automobile->stWheels[i].vecWheelAngle, automobile->m_vecMoveSpeed);
 					CVector frictionSpeed = automobile->m_vecMoveSpeed - normalSpeed;
 					if (i == CARWHEEL_FRONT_LEFT || i == CARWHEEL_REAR_LEFT)
-						frictionSpeed -= 0.05f * automobile->m_placement.right;
+						frictionSpeed -= (1.0f - friction) / 15.0f * automobile->m_placement.right;
 					else
-						frictionSpeed += 0.05f * automobile->m_placement.right;
-					CVector sparkDir = 0.25f * frictionSpeed;
+						frictionSpeed += (1.0f - friction) / 15.0f * automobile->m_placement.right;
+					CVector sparkDir = friction * frictionSpeed;
 					CParticle::AddParticle(PARTICLE_SPARK_SMALL, automobile->stWheels[i].vecWheelPos, sparkDir, NULL, 0.0f, 0, 0, 0, 0);
 
 					if (speedSq > 0.04f)
@@ -1637,13 +1664,6 @@ eOpcodeResult __stdcall createLight(CScript* script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall addTex(CScript* script) {
-	int ref = CTxdStore::AddTxdSlot("ice");
-	CTxdStore::LoadTxd(ref, "models/ice.txd");
-	CTxdStore::AddRef(ref);
-	return OR_CONTINUE;
-}
-
 eOpcodeResult __stdcall isAttached(CScript* script) {
 	script->Collect(1);
 	int index = Params[0].nVar;
@@ -1673,50 +1693,9 @@ eOpcodeResult __stdcall detachVehicle(CScript* script) {
 	return OR_CONTINUE;
 }
 
-RpMaterial* MaterialCallback(RpMaterial* material, void* texture) {
-
-	//RwTexture* newTexture = reinterpret_cast<RwTexture*>(texture);
-	if (material->texture) {
-		if (strcmp(material->texture->name, "stainless") == 0) {
-			RwTexture* replacement = RwTextureRead("ice", NULL);
-
-			material->texture = replacement;
-		}
-	}
-	return material;
-}
-
-static RpAtomic* AtomicCallback(RpAtomic* atomic, void* texture) {
-	if (atomic->geometry->matList.numMaterials > 0) {
-		RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, texture);
-	}
-	return atomic;
-}
-
-RwFrame* ListFrameNames(RwFrame* frame, void* data) {
-	if (frame->child) {
-		RwFrame* child = frame->child;
-		do {
-			ListFrameNames(child, data);
-			child = child->next;
-		} while (child);
-	}
-
-	return frame;
-}
-
-RwObject* __cdecl SetAtomicGlow(RwObject* object, void* data)
-{
-	RpAtomic* atomic = (RpAtomic*)object;
-	RpGeometry* geometry = atomic->geometry;
-	RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, NULL);
-	return object;
-}
-
-
 //TEXTURESRENDER
 
-eOpcodeResult __stdcall oldReplaceTex(CScript* script)
+eOpcodeResult __stdcall replaceTex(CScript* script)
 {
 	CTxdStore::PushCurrentTxd();
 	script->Collect(5);
@@ -1731,61 +1710,6 @@ eOpcodeResult __stdcall oldReplaceTex(CScript* script)
 			memcpy(original, replacement, sizeof(replacement));
 		}
 		RwTextureDestroy(replacement);
-	}
-	CTxdStore::PopCurrentTxd();
-	return OR_CONTINUE;
-}
-
-eOpcodeResult __stdcall replaceTex(CScript* script)
-{
-	CTxdStore::PushCurrentTxd();
-	script->Collect(1);
-	std::ofstream of("DEBUG", std::ofstream::out);
-
-	of << "Finding Frame: panels" << std::endl;
-	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	/*CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-	RpAtomic* atomic;
-	RpGeometry* geometry;
-	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("infernus"));
-	for (auto frame : automobile->m_aCarNodes) {
-		if (frame) {
-			RwFrameForAllObjects(frame, SetAtomicGlow, &atomic);
-		}
-	}
-	AtomicCallback(reinterpret_cast<RpAtomic*>(vehicle->m_pRwObject), NULL);
-	of.close();*/
-	if (vehicle) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "panels");
-		//AtomicCallback(reinterpret_cast<RpAtomic*>(vehicle->m_pRwObject), (void*)replacement);
-		//RpClumpForAllAtomics(vehicle->m_pRwClump, AtomicCallback, (void*)replacement);
-		if (frame) {
-			CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot("hotring"));
-			RwTexture* replacement = RwTextureRead("ice", NULL);
-			of << "Found Frame" << std::endl;
-			RpAtomic* atomic;
-			//RpGeometry* geometry;
-			RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
-			RpGeometryForAllMaterials(atomic->geometry, MaterialCallback, (void*)replacement);
-			//frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "door_lf_hi_ok");
-			/*geometry = atomic->geometry;
-			of << "Num Materials: " << geometry->matList.numMaterials << std::endl;
-			for (int i = 0; i < geometry->matList.numMaterials; i++) {
-				of << geometry->matList.materials[i]->texture->name << std::endl;
-				if (strcmp(geometry->matList.materials[i]->texture->name, "stainless") == 0) {
-					of << "replacing" << std::endl;
-					RpMaterial* mat = geometry->matList.materials[i];
-					mat->color = geometry->matList.materials[i]->color;
-					mat->pad = geometry->matList.materials[i]->pad;
-					mat->pipeline = geometry->matList.materials[i]->pipeline;
-					mat->refCount = geometry->matList.materials[i]->refCount;
-					mat->surfaceProps = geometry->matList.materials[i]->surfaceProps;
-					//memcpy(mat, geometry->matList.materials[i], sizeof(geometry->matList.materials[i]));
-					mat->texture = replacement;
-					//geometry->matList.materials[i] = mat;
-				}
-			}*/
-		}
 	}
 	CTxdStore::PopCurrentTxd();
 	return OR_CONTINUE;
@@ -2432,7 +2356,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F07, playCharAnim);
 		Opcodes::RegisterOpcode(0x3F08, addBuilding);
 		Opcodes::RegisterOpcode(0x3F09, removeBuilding);
-		Opcodes::RegisterOpcode(0x3F0A, oldReplaceTex);
+		Opcodes::RegisterOpcode(0x3F0A, replaceTex);
 		Opcodes::RegisterOpcode(0x3F0B, wheelSparks);
 		Opcodes::RegisterOpcode(0x3F0C, setCarCollision);
 		Opcodes::RegisterOpcode(0x3F0D, getDoorAngle);
@@ -2505,6 +2429,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F53, fadeCarComponentIndexAlpha);
 		Opcodes::RegisterOpcode(0x3F54, carComponentDigitOff);
 		Opcodes::RegisterOpcode(0x3F55, carComponentDigitOn);
+		Opcodes::RegisterOpcode(0x3F56, getArcsin);
+		Opcodes::RegisterOpcode(0x3F57, getArccos);
+		Opcodes::RegisterOpcode(0x3F58, getTan);
+		Opcodes::RegisterOpcode(0x3F59, getArctan);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
@@ -2533,6 +2461,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		//Reserving 0x3F18-0x3F1F for get command
 
 		Events::vehicleRenderEvent.before += [&](CVehicle* vehicle) {
+			float leftDoorAngle;
+			float rightDoorAngle;
+			float leftPiston;
+			float rightPiston;
+			float leftStrutAngle;
+			float rightStrutAngle;
+			// Car attachment
 			for (auto const& [vehicle_id, attachment] : carAttachments) {
 				if (attachment.attached == vehicle) {
 					CMatrix matrix = attachment.vehicle->m_placement * attachment.offset;
@@ -2542,6 +2477,22 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					attachment.attached->m_placement.pos = matrix.pos;
 					attachment.attached->m_vecMoveSpeed = attachment.vehicle->m_vecMoveSpeed;
 				}
+			}
+
+			// Delorean
+			if (vehicle->m_nModelIndex == 237) {
+				CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+				leftDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_LEFT].fAngle);
+				leftPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(leftDoorAngle)));
+				leftStrutAngle = 86.6f - degrees(asinf(sinf(leftDoorAngle) * DOOR_PIVOT / leftPiston));
+				rightDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_RIGHT].fAngle);
+				rightPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(rightDoorAngle)));
+				rightStrutAngle = -(86.6f - degrees(asinf(sinf(rightDoorAngle) * DOOR_PIVOT / rightPiston)));
+
+				rotateComponent(vehicle, "doorlfstrut_", 0.0f, leftStrutAngle, 0.0f);
+				rotateComponent(vehicle, "doorrfstrut_", 0.0f, rightStrutAngle, 0.0f);
+				moveComponent(vehicle, "doorlfstrutp", 0.0f, 0.0f, leftPiston - 0.259f);
+				moveComponent(vehicle, "doorrfstrutp", 0.0f, 0.0f, rightPiston - 0.259f);
 			}
 		};
 		Events::initGameEvent += [] {
