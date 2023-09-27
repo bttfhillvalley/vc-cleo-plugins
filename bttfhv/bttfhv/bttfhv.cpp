@@ -82,6 +82,38 @@ enum eSurfaceType
 	SURFACE_CONCRETE_BEACH,
 };
 
+enum
+{
+	HANDLING_1G_BOOST = 1,
+	HANDLING_2G_BOOST = 2,
+	HANDLING_REV_BONNET = 4,
+	HANDLING_HANGING_BOOT = 8,
+	HANDLING_NO_DOORS = 0x10,
+	HANDLING_IS_VAN = 0x20,
+	HANDLING_IS_BUS = 0x40,
+	HANDLING_IS_LOW = 0x80,
+	HANDLING_DBL_EXHAUST = 0x100,
+	HANDLING_TAILGATE_BOOT = 0x200,
+	HANDLING_NOSWING_BOOT = 0x400,
+	HANDLING_NONPLAYER_STABILISER = 0x800,
+	HANDLING_NEUTRALHANDLING = 0x1000,
+	HANDLING_HAS_NO_ROOF = 0x2000,
+	HANDLING_IS_BIG = 0x4000,
+	HANDLING_HALOGEN_LIGHTS = 0x8000,
+	HANDLING_IS_BIKE = 0x10000,
+	HANDLING_IS_HELI = 0x20000,
+	HANDLING_IS_PLANE = 0x40000,
+	HANDLING_IS_BOAT = 0x80000,
+	HANDLING_NO_EXHAUST = 0x100000,
+	HANDLING_REARWHEEL_1ST = 0x200000,
+	HANDLING_HANDBRAKE_TYRE = 0x400000,
+	HANDLING_SIT_IN_BOAT = 0x800000,
+	HANDLING_FAT_REARW = 0x1000000,
+	HANDLING_NARROW_FRONTW = 0x2000000,
+	HANDLING_GOOD_INSAND = 0x4000000,
+	HANDLING_UNKNOWN = 0x8000000,	// something for helis and planes
+};
+
 using namespace irrklang;
 using namespace plugin;
 using namespace std;
@@ -478,6 +510,10 @@ eOpcodeResult __stdcall updateHandling(CScript* script)
 				}
 				vehicle->m_pHandlingData = handlingData[name];
 				automobile->SetupSuspensionLines();
+				automobile->m_nVehicleFlags.bIsVan = !!(handlingData[name]->uFlags & HANDLING_IS_VAN);
+				automobile->m_nVehicleFlags.bHideOccupants = !!(handlingData[name]->uFlags & HANDLING_IS_BUS);  // Plugin-sdk is named wrong
+				automobile->m_nVehicleFlags.bIsBus = !!(handlingData[name]->uFlags & HANDLING_IS_BIG);  // Plugin-sdk is named wrong
+				automobile->m_nVehicleFlags.bIsBig = !!(handlingData[name]->uFlags & HANDLING_IS_LOW);  // Plugin-sdk is named wrong
 			}
 			if (flyingHandlingData.contains(name)) {
 				vehicle->m_pFlyingHandling = flyingHandlingData[name];
