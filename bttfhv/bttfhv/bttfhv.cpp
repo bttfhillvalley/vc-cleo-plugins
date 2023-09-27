@@ -33,6 +33,8 @@
 #define SQR(x) ((x) * (x))
 #define BODY_PIVOT (0.364084f)
 #define DOOR_PIVOT (0.105361f)
+#define KURUMA_ID 20
+#define AIRTRAIN_ID 40
 
 enum {
 	CARWHEEL_FRONT_LEFT,
@@ -112,6 +114,12 @@ map<string, tHandlingData*> handlingData;
 map<string, tFlyingHandlingData*> flyingHandlingData;
 map<string, tBoatHandlingData*> boatHandlingData;
 map<string, tBikeHandlingData*> bikeHandlingData;
+map<int, int> handlingOverride = {
+	{237, KURUMA_ID},
+	{238, AIRTRAIN_ID},
+	{239, AIRTRAIN_ID}
+};
+
 
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
 //ofstream of("DEBUG", std::ofstream::app);
@@ -464,6 +472,10 @@ eOpcodeResult __stdcall updateHandling(CScript* script)
 		string name(modelInfo->m_szName);
 		if (!name.empty()) {
 			if (handlingData.contains(name)) {
+				auto handlingId = handlingOverride.find(vehicle->m_nModelIndex);
+				if (handlingId != handlingOverride.end()) {
+					gHandlingDataMgr.m_aVehicleHandling[handlingId->second] = *handlingData[name];
+				}
 				vehicle->m_pHandlingData = handlingData[name];
 				automobile->SetupSuspensionLines();
 			}
@@ -2045,7 +2057,7 @@ void ConvertBikeDataToGameUnits(tBikeHandlingData* handling)
 }
 
 bool doesFileExist(const char* filepath) {
-	fstream infile(".\\DATA\\HANDLING_ADDITIONAL.CFG");
+	fstream infile(filepath);
 	return infile.good();
 }
 
