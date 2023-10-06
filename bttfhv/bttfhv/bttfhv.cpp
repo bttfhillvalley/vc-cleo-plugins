@@ -3,6 +3,7 @@
 #include "irrKlang.h"
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <cmath>
 #include <map>
@@ -121,8 +122,8 @@ using namespace std;
 ISoundEngine* m_soundEngine;
 bool loadedSound = false;
 char volume = 0;
-int visibility;  // Hack for now, not sure how to pass this in as a (void*) without messing up the value
 boolean paused = false;
+bool saveSuccessful = false;
 unsigned char work_buff[55000];
 
 struct GameSound {
@@ -154,7 +155,7 @@ map<int, int> handlingOverride = {
 
 
 int &ms_atomicPluginOffset = *(int *)0x69A1C8;
-//ofstream of("DEBUG", std::ofstream::app);
+//ofstream of("DEBUG", ofstream::app);
 
 int __cdecl GetAtomicId(RpAtomic *atomic) {
 	return *(&atomic->object.object.type + ms_atomicPluginOffset);
@@ -206,7 +207,8 @@ RwObject *__cdecl SetAtomicVisibilityCB(RwObject *rwObject, void *data) {
 }
 
 RwObject* __cdecl GetAtomicVisibilityCB(RwObject* rwObject, void* data) {
-	visibility = (int)rwObject->flags;
+	int* visibility = static_cast<int*>(data);
+	*visibility = (int)rwObject->flags;
 	return rwObject;
 }
 
@@ -679,22 +681,23 @@ eOpcodeResult __stdcall isWheelsNotOnGround(CScript* script) {
 // Car stuff
 // Helper methods
 void setVisibility(CEntity* model, const char* component, int visible) {
-	visibility = 0;
+	int visibility = 0;
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
-		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, NULL);
+		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
 		if (visible != visibility) {
 			RwFrameForAllObjects(frame, SetAtomicVisibilityCB, (void*)visible);
 		}
 	}
 }
 
-void getVisibility(CEntity* model, const char* component) {
-	visibility = 0;
+int getVisibility(CEntity* model, const char* component) {
+	int visibility = 0;
 	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
 	if (frame) {
-		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, NULL);
+		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
 	}
+	return visibility;
 }
 
 void moveComponent(CEntity* model, const char* component, float x, float y, float z) {
@@ -785,7 +788,7 @@ int getCurrentDigit(CVehicle* vehicle, const char* component) {
 	char digitComponent[128];
 	for (int digit = 0; digit < 20; digit++) {
 		sprintf(digitComponent, "%s%d", component, digit);
-		getVisibility(vehicle, digitComponent);
+		int visibility = getVisibility(vehicle, digitComponent);
 		if (visibility > 0) {
 			return digit;
 		}
@@ -809,7 +812,7 @@ void digitOn(CVehicle* vehicle, const char* component, int digit) {
 	}
 	char digitComponent[128];
 	sprintf(digitComponent, "%s%d", component, digit);
-	getVisibility(vehicle, digitComponent);
+	int visibility = getVisibility(vehicle, digitComponent);
 	if (visibility == 0) {
 		digitOff(vehicle, component);
 		setVisibility(vehicle, digitComponent, 1);
@@ -863,7 +866,7 @@ eOpcodeResult __stdcall isCarComponentVisible(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	getVisibility(vehicle, Params[1].cVar);
+	int visibility = getVisibility(vehicle, Params[1].cVar);
 	script->UpdateCompareFlag(visibility != 0);
 	return OR_CONTINUE;
 }
@@ -872,7 +875,7 @@ eOpcodeResult __stdcall isCarComponentNotVisible(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	getVisibility(vehicle, Params[1].cVar);
+	int visibility = getVisibility(vehicle, Params[1].cVar);
 	script->UpdateCompareFlag(visibility == 0);
 	return OR_CONTINUE;
 }
@@ -883,7 +886,7 @@ eOpcodeResult __stdcall isCarComponentIndexVisible(CScript* script)
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	char component[256];
 	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
-	getVisibility(vehicle, component);
+	int visibility = getVisibility(vehicle, component);
 	script->UpdateCompareFlag(visibility != 0);
 	return OR_CONTINUE;
 }
@@ -894,7 +897,7 @@ eOpcodeResult __stdcall isCarComponentIndexNotVisible(CScript* script)
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	char component[256];
 	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
-	getVisibility(vehicle, component);
+	int visibility = getVisibility(vehicle, component);
 	script->UpdateCompareFlag(visibility == 0);
 	return OR_CONTINUE;
 }
@@ -1237,8 +1240,6 @@ eOpcodeResult __stdcall skiMode(CScript* script)
 	return OR_CONTINUE;
 }
 
-
-
 eOpcodeResult __stdcall rotateCar(CScript* script)
 {
 	script->Collect(2);
@@ -1448,6 +1449,30 @@ eOpcodeResult __stdcall setCarEngineSound(CScript* script)
 
 	if (vehicle) {
 		vehicle->m_nVehicleFlags.bEngineOn = Params[1].nVar;
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getVehicleFlags(CScript* script)
+{
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+
+	unsigned int flags = 0;
+	if (vehicle) {
+		flags = vehicle->m_pHandlingData->uFlags;
+	}
+	Params[0].nVar = flags;
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setVehicleFlags(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	if (vehicle) {
+		vehicle->m_pHandlingData->uFlags = Params[1].nVar;
 	}
 	return OR_CONTINUE;
 }
@@ -2481,6 +2506,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F57, getArccos);
 		Opcodes::RegisterOpcode(0x3F58, getTan);
 		Opcodes::RegisterOpcode(0x3F59, getArctan);
+		Opcodes::RegisterOpcode(0x3F5A, getVehicleFlags);
+		Opcodes::RegisterOpcode(0x3F5B, setVehicleFlags);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
@@ -2571,8 +2598,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
 		Events::gameProcessEvent += [&] {
 			// Set volume of sound engine to match game
-			if (volume != FrontendMenuManager.field_29) {
-				volume = FrontendMenuManager.field_29;
+			if (volume != FrontendMenuManager.m_nPrefsSfxVolume) {
+				volume = FrontendMenuManager.m_nPrefsSfxVolume;
 				m_soundEngine->setSoundVolume(volume / 127.0f);
 			}
 			if (Command<Commands::IS_PLAYER_PLAYING>(0))
@@ -2586,15 +2613,27 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				dir.Z = TheCamera.up.z;
 				m_soundEngine->setListenerPosition(playerPos, dir, vec3df(0, 0, 0), vec3df(0, 0, 1));
 			}
-			if (!soundMap.empty()) {
-				if (FrontendMenuManager.m_bMenuVisible && !paused) {
+			if (FrontendMenuManager.m_bMenuActive) {
+				if (FrontendMenuManager.m_nCurrentMenuPage == MENUPAGE_SAVE_SUCCESSFUL && !saveSuccessful) {
+					saveSuccessful = true;
+					cout << "BTTFHV: Saved to " << FrontendMenuManager.m_nCurrentSaveSlot << endl;
+				}
+				else if (FrontendMenuManager.m_nCurrentMenuPage != MENUPAGE_SAVE_SUCCESSFUL && saveSuccessful) {
+					saveSuccessful = false;
+				}
+			}
+			else if (saveSuccessful) {
+				saveSuccessful = false;
+			}
 
+			if (!soundMap.empty()) {
+				if (FrontendMenuManager.m_bMenuActive && !paused) {
 					for (auto const& [key, gamesound] : soundMap) {
 						gamesound.sound->setIsPaused();
 					}
 					paused = true;
 				}
-				else if (!FrontendMenuManager.m_bMenuVisible) {
+				else if (!FrontendMenuManager.m_bMenuActive) {
 					auto itr = soundMap.begin();
 					while (itr != soundMap.end()) {
 						// Delete sound if its finished playing
