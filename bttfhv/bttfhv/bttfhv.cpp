@@ -250,6 +250,7 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 	tFlyingHandlingData* flyingHandling = vehicle->m_pFlyingHandling;
 	float rm = pow(flyingHandling->fMoveRes, CTimer::ms_fTimeStep);
 	float fUpSpeed = DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.at);
+	float fForwardSpeed = DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up);
 	float fAttitude = asin(vehicle->m_placement.up.z);
 	float fAttitudeUp = fAttitude + radians(90.0f);
 	float fHeading = atan2(vehicle->m_placement.up.y, vehicle->m_placement.up.x);
@@ -300,22 +301,31 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 		fYaw = Clamp(fYaw * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.z), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
 	}
 
-	if (damaged) {
-		fUp = 0.4f;
-	}
-
 	if (vehicle->m_nState == STATUS_PLAYER || vehicle->m_nState == STATUS_PLAYER_REMOTE || vehicle->m_nState == STATUS_PHYSICS) {
 		// Hover
 		CVector upVector(cos(fAttitudeUp) * cos(fHeading), cos(fAttitudeUp) * sin(fHeading), sin(fAttitudeUp));
 		upVector.Normalise();
-
 		if (!damaged) {
 			float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
 			fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
 		}
+		else {
+			fUp = 0.4f;
+		}
 		fUp *= cos(fAttitude);
 
 		vehicle->ApplyMoveForce(GRAVITY * upVector * fUp * vehicle->m_fMass * CTimer::ms_fTimeStep);
+
+		CVector forwardVector = vehicle->m_placement.up * (DotProduct(vehicle->m_placement.at, vehicle->m_placement.up) / powf(vehicle->m_placement.up.Magnitude(), 2.0f));
+		CVector rightVector = vehicle->m_placement.at - forwardVector;
+
+		// Get rid of any z thrust
+		rightVector.z = 0.0f;
+		rightVector *= flyingHandling->fThrust;
+
+		// Limit sideways motion at higher speeds
+		rightVector *= powf(M_E, -2.0f * vehicle->m_vecMoveSpeed.Magnitude());
+		vehicle->ApplyMoveForce(GRAVITY * rightVector * vehicle->m_fMass * CTimer::ms_fTimeStep);
 	}
 
 	if (vehicle->m_placement.at.z > 0.0f) {
@@ -682,78 +692,94 @@ eOpcodeResult __stdcall isWheelsNotOnGround(CScript* script) {
 // Helper methods
 void setVisibility(CEntity* model, const char* component, int visible) {
 	int visibility = 0;
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
-	if (frame) {
-		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
-		if (visible != visibility) {
-			RwFrameForAllObjects(frame, SetAtomicVisibilityCB, (void*)visible);
+	if (model) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		if (frame) {
+			RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
+			if (visible != visibility) {
+				RwFrameForAllObjects(frame, SetAtomicVisibilityCB, (void*)visible);
+			}
 		}
 	}
 }
 
 int getVisibility(CEntity* model, const char* component) {
 	int visibility = 0;
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
-	if (frame) {
-		RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
+	if (model) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		if (frame) {
+			RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
+		}
 	}
 	return visibility;
 }
 
 void moveComponent(CEntity* model, const char* component, float x, float y, float z) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
-	if (frame) {
-		CMatrix cmmatrix(&frame->modelling, false);
-		cmmatrix.SetTranslateOnly(x, y, z);
-		cmmatrix.UpdateRW();
+	if (model) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		if (frame) {
+			CMatrix cmmatrix(&frame->modelling, false);
+			cmmatrix.SetTranslateOnly(x, y, z);
+			cmmatrix.UpdateRW();
+		}
 	}
 }
 
 void rotateComponent(CEntity* model, const char* component, float rx, float ry, float rz) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
-	if (frame) {
-		CMatrix cmatrix(&frame->modelling, false);
-		CVector cpos(cmatrix.pos);
-		cmatrix.SetRotate(radians(rx), radians(ry), radians(rz));
-		cmatrix.pos = cpos;
-		cmatrix.UpdateRW();
+	if (model) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		if (frame) {
+			CMatrix cmatrix(&frame->modelling, false);
+			CVector cpos(cmatrix.pos);
+			cmatrix.SetRotate(radians(rx), radians(ry), radians(rz));
+			cmatrix.pos = cpos;
+			cmatrix.UpdateRW();
+		}
 	}
 }
 
 void setColor(CVehicle* vehicle, const char* component, int red, int green, int blue) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
-	if (frame) {
-		RpAtomic* atomic;
-		RpGeometry* geometry;
-		RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
-		geometry = atomic->geometry;
-		RpGeometryForAllMaterials(geometry, SetRedCB, (void*)red);
-		RpGeometryForAllMaterials(geometry, SetGreenCB, (void*)green);
-		RpGeometryForAllMaterials(geometry, SetBlueCB, (void*)blue);
+	if (vehicle) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+		if (frame) {
+			RpAtomic* atomic;
+			RpGeometry* geometry;
+			RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
+			geometry = atomic->geometry;
+			RpGeometryForAllMaterials(geometry, SetRedCB, (void*)red);
+			RpGeometryForAllMaterials(geometry, SetGreenCB, (void*)green);
+			RpGeometryForAllMaterials(geometry, SetBlueCB, (void*)blue);
+		}
 	}
 }
 
 void setAlpha(CVehicle* vehicle, const char* component, int alpha) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
-	if (frame) {
-		RpAtomic* atomic;
-		RpGeometry* geometry;
-		RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
-		geometry = atomic->geometry;
-		vehicle->SetComponentAtomicAlpha(atomic, alpha);
-		RwFrameForAllObjects(frame, SetAtomicVisibilityCB, (void*)alpha);
+	if (vehicle) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+		if (frame) {
+			RpAtomic* atomic;
+			RpGeometry* geometry;
+			RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
+			geometry = atomic->geometry;
+			vehicle->SetComponentAtomicAlpha(atomic, alpha);
+			RwFrameForAllObjects(frame, SetAtomicVisibilityCB, (void*)alpha);
+		}
 	}
 }
 
 RwUInt8 getAlpha(CVehicle* vehicle, const char* component) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
 	RwUInt8 alpha = 0;
-	if (frame) {
-		RpAtomic* atomic;
-		RpGeometry* geometry;
-		RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
-		geometry = atomic->geometry;
-		alpha = atomic->geometry->matList.materials[0]->color.alpha;
+	if (vehicle) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+
+		if (frame) {
+			RpAtomic* atomic;
+			RpGeometry* geometry;
+			RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
+			geometry = atomic->geometry;
+			alpha = atomic->geometry->matList.materials[0]->color.alpha;
+		}
+
 	}
 	return alpha;
 }
@@ -1686,6 +1712,54 @@ eOpcodeResult __stdcall getRelativeVelocity(CScript* script) {
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall setGasPedal(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		automobile->m_fGasPedal = Clamp(Params[1].fVar, 0.0f, 1.0f);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setBrakePedal(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		automobile->m_fBreakPedal = Clamp(Params[1].fVar, 0.0f, 1.0f);
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setHandBrake(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		automobile->m_nVehicleFlags.bIsHandbrakeOn = Params[1].nVar;
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setSteeringAngle(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		automobile->m_fSteerAngle = radians(Clamp(Params[1].fVar, -automobile->m_pHandlingData->fSteeringLock, automobile->m_pHandlingData->fSteeringLock));
+	}
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall getSteeringAngle(CScript* script)
 {
 	script->Collect(1);
@@ -2508,6 +2582,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F59, getArctan);
 		Opcodes::RegisterOpcode(0x3F5A, getVehicleFlags);
 		Opcodes::RegisterOpcode(0x3F5B, setVehicleFlags);
+		Opcodes::RegisterOpcode(0x3F5C, setGasPedal);
+		Opcodes::RegisterOpcode(0x3F5D, setBrakePedal);
+		Opcodes::RegisterOpcode(0x3F5E, setSteeringAngle);
+		Opcodes::RegisterOpcode(0x3F5F, setHandBrake);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
