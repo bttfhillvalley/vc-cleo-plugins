@@ -98,6 +98,36 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bttfhv.cpp" />
+    <ClCompile Include="building\idemap.cpp" />
+    <ClCompile Include="configuration\fileloader.cpp" />
+    <ClCompile Include="delorean\delorean.cpp" />
+    <ClCompile Include="opcodes\opcodes_animation.cpp" />
+    <ClCompile Include="opcodes\opcodes_building.cpp" />
+    <ClCompile Include="opcodes\opcodes_effects.cpp" />
+    <ClCompile Include="opcodes\opcodes_math.cpp" />
+    <ClCompile Include="opcodes\opcodes_sound.cpp" />
+    <ClCompile Include="opcodes\opcodes_textures.cpp" />
+    <ClCompile Include="opcodes\opcodes_vehicle.cpp" />
+    <ClCompile Include="rw\utils.cpp" />
+    <ClCompile Include="sound\sound.cpp" />
+    <ClCompile Include="utils\math.cpp" />
+    <ClCompile Include="vehicle\attachment.cpp" />
+    <ClCompile Include="vehicle\components.cpp" />
+    <ClCompile Include="vehicle\hover.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="building\idemap.h" />
+    <ClInclude Include="configuration\fileloader.h" />
+    <ClInclude Include="constants.h" />
+    <ClInclude Include="delorean\components.h" />
+    <ClInclude Include="delorean\delorean.h" />
+    <ClInclude Include="opcodes\opcodes.h" />
+    <ClInclude Include="rw\utils.h" />
+    <ClInclude Include="sound\sound.h" />
+    <ClInclude Include="utils\math.h" />
+    <ClInclude Include="vehicle\attachment.h" />
+    <ClInclude Include="vehicle\components.h" />
+    <ClInclude Include="vehicle\hover.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

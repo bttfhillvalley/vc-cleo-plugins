@@ -2,5 +2,118 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="bttfhv.cpp" />
+    <ClCompile Include="sound\sound.cpp">
+      <Filter>sound</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_sound.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
+    <ClCompile Include="configuration\fileloader.cpp">
+      <Filter>configuration</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\math.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="rw\utils.cpp">
+      <Filter>rw</Filter>
+    </ClCompile>
+    <ClCompile Include="vehicle\hover.cpp">
+      <Filter>vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="vehicle\components.cpp">
+      <Filter>vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="vehicle\attachment.cpp">
+      <Filter>vehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="building\idemap.cpp">
+      <Filter>building</Filter>
+    </ClCompile>
+    <ClCompile Include="delorean\delorean.cpp">
+      <Filter>delorean</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_vehicle.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_building.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_effects.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_textures.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_animation.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_math.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="constants.h" />
+    <ClInclude Include="opcodes\opcodes.h">
+      <Filter>opcodes</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\sound.h">
+      <Filter>sound</Filter>
+    </ClInclude>
+    <ClInclude Include="configuration\fileloader.h">
+      <Filter>configuration</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\math.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="rw\utils.h">
+      <Filter>rw</Filter>
+    </ClInclude>
+    <ClInclude Include="vehicle\hover.h">
+      <Filter>vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="vehicle\components.h">
+      <Filter>vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="vehicle\attachment.h">
+      <Filter>vehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="building\idemap.h">
+      <Filter>building</Filter>
+    </ClInclude>
+    <ClInclude Include="delorean\delorean.h">
+      <Filter>delorean</Filter>
+    </ClInclude>
+    <ClInclude Include="delorean\components.h">
+      <Filter>delorean</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="opcodes">
+      <UniqueIdentifier>{b012ba32-c954-438c-a01e-38092082339a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sound">
+      <UniqueIdentifier>{00002d5a-6890-486b-a41d-d88014667d18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="configuration">
+      <UniqueIdentifier>{9f851cba-38ca-44b3-b824-badf000ffeeb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{f33e1e61-b864-4233-ab8c-e7e77b3c793d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vehicle">
+      <UniqueIdentifier>{805d31b8-936d-4c42-9ba6-a87a151b7de8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rw">
+      <UniqueIdentifier>{cd860765-14ff-4702-970e-c8117c2984f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="building">
+      <UniqueIdentifier>{b6a205ad-b9fa-4432-acb7-407122fb1384}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="delorean">
+      <UniqueIdentifier>{4f7f16e9-7e72-40d4-8058-c76262303ac2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="time">
+      <UniqueIdentifier>{e3aae283-e1a2-4079-a0c2-cb15292878c1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
