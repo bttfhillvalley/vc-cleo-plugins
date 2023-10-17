@@ -50,6 +50,12 @@
     <ClCompile Include="opcodes\opcodes_math.cpp">
       <Filter>opcodes</Filter>
     </ClCompile>
+    <ClCompile Include="delorean\components.h">
+      <Filter>delorean</Filter>
+    </ClCompile>
+    <ClCompile Include="vehicle\handling.cpp">
+      <Filter>vehicle</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />
@@ -83,8 +89,14 @@
     <ClInclude Include="delorean\delorean.h">
       <Filter>delorean</Filter>
     </ClInclude>
-    <ClInclude Include="delorean\components.h">
+    <ClInclude Include="delorean\options.h">
       <Filter>delorean</Filter>
+    </ClInclude>
+    <ClInclude Include="delorean\enums.h">
+      <Filter>delorean</Filter>
+    </ClInclude>
+    <ClInclude Include="vehicle\handling.h">
+      <Filter>vehicle</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

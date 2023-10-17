@@ -1,4 +1,3 @@
-#define _USE_MATH_DEFINES
 #include <iostream>
 #include "plugin.h"
 #include "irrKlang.h"
@@ -18,6 +17,8 @@
 #include "vehicle\attachment.h"
 #include "vehicle\components.h"
 #include "vehicle\hover.h"
+
+#include "delorean\delorean.h"
 
 tScriptVar* Params;
 
@@ -153,12 +154,25 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		//Reserving 0x3F18-0x3F1F for get command
 
 		Events::vehicleRenderEvent.before += [&](CVehicle* vehicle) {
-			float leftDoorAngle;
-			float rightDoorAngle;
-			float leftPiston;
-			float rightPiston;
-			float leftStrutAngle;
-			float rightStrutAngle;
+			// Delorean stuff
+			Delorean* delorean;
+			auto it = deloreanMap.find(vehicle);
+			if (it == deloreanMap.end()) {
+				delorean = new Delorean(vehicle);
+				deloreanMap[vehicle] = delorean;
+			}
+			else {
+				delorean = it->second;
+			}
+
+			if (delorean->IsWrecked()) {
+				delete delorean;
+				deloreanMap.erase(vehicle);
+			}
+			else {
+				delorean->AnimateDoorStruts();
+			}
+
 			// Car attachment
 			for (auto const& [vehicle_id, attachment] : carAttachments) {
 				if (attachment.attached == vehicle) {
@@ -169,22 +183,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					attachment.attached->m_placement.pos = matrix.pos;
 					attachment.attached->m_vecMoveSpeed = attachment.vehicle->m_vecMoveSpeed;
 				}
-			}
-
-			// Delorean
-			if (vehicle->m_nModelIndex == 237) {
-				CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-				leftDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_LEFT].fAngle);
-				leftPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(leftDoorAngle)));
-				leftStrutAngle = 86.6f - degrees(asinf(sinf(leftDoorAngle) * DOOR_PIVOT / leftPiston));
-				rightDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_RIGHT].fAngle);
-				rightPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(rightDoorAngle)));
-				rightStrutAngle = -(86.6f - degrees(asinf(sinf(rightDoorAngle) * DOOR_PIVOT / rightPiston)));
-
-				rotateComponent(vehicle, "doorlfstrut_", 0.0f, leftStrutAngle, 0.0f);
-				rotateComponent(vehicle, "doorrfstrut_", 0.0f, rightStrutAngle, 0.0f);
-				moveComponent(vehicle, "doorlfstrutp", 0.0f, 0.0f, leftPiston - 0.259f);
-				moveComponent(vehicle, "doorrfstrutp", 0.0f, 0.0f, rightPiston - 0.259f);
 			}
 		};
 		Events::initGameEvent += [] {

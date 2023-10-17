@@ -1,169 +1,142 @@
 #pragma once
-#include <map>
+#include <string>
+#include <tuple>
 #include <vector>
 
 using namespace std;
 
-enum Plate {
-	PLATE_STOCK,
-	PLATE_OUTATIME,
-	PLATE_BARCODE,
+const vector<string> PLATE_OUTATIME_COMPONENTS = {
+	"plate",
 };
 
-enum Hook {
-	HOOK_NONE,
-	HOOK_HOLDER,
-	HOOK_SIDE,
-	HOOK_UP,
+const vector<string> PLATE_BARCODE_COMPONENTS = {
+	"platebttf2",
 };
 
-enum Hood {
-	HOOD_STOCK,
-	HOOD_HOODBOX,
+const vector<string> HOOK_NONE_COMPONENTS = {
+	"nohookbttf1",
 };
 
-enum Hitch {
-	HITCH_NONE,
-	HITCH_ATTACHED,
+const vector<string> HOOK_HOLDER_COMPONENTS = {
+	"holderbttf1",
 };
 
-enum DriveTrain {
-	DRIVETRAIN_STOCK,
-	DRIVETRAIN_HOVER,
+const vector<string> HOOK_SIDE_COMPONENTS = {
+	"hookbttf1",
+	"holderbttf1",
 };
 
-enum Wheel {
-	WHEEL_STOCK,
-	WHEEL_WHITEWALLS,
-	WHEEL_RAILROAD,
+const vector<string> HOOK_UP_COMPONENTS = {
+	"hookandholderbttf1",
 };
 
-enum TimeMachine {
-	TIME_MACHINE_NONE,
-	TIME_MACHINE_ATTACHED,
+const vector<string> HOODBOX_COMPONENTS = {
+	"bonnetbttf3",
 };
 
-enum GrillHitch {
-	GRILL_HITCH_STOCK,
-	GRILL_HITCH_TM,
+const vector<string> HITCH_COMPONENTS = {
+	"hitch",
 };
 
-const map<Plate, vector<string>> plateComponents = {
-	{ PLATE_STOCK, {} },
-	{ PLATE_OUTATIME, { "plate" } },
-	{ PLATE_BARCODE, { "platebttf2" } },
+const vector<string> STOCK_COMPONENTS = {
+	"gloveboxclosed",
+	"cargonet",
+	"consoletop",
+	"consoletopcontrols",
+	"passengerseatbelt",
+	"consoleacgrills",
+	"enginecover",
+	"boot_hi_ok",
+	"windscreen_rearview",
+	"wing_lr_hi_ok_glass",
+	"wing_rr_hi_ok_glass",
+	"back_glass",
+	"platestock",
+	"exhaustmodel",
 };
 
-const map<Hook, vector<string>> hookComponents = {
-	{ HOOK_NONE, { "nohookbttf1" } },
-	{ HOOK_HOLDER, { "holderbttf1" } },
-	{ HOOK_SIDE, { "hookbttf1", "holderbttf1"} },
-	{ HOOK_UP, { "hookandholderbttf1" } },
+const vector<string> TIME_MACHINE_COMPONENTS = {
+	"bttfparts",
+	"wing_lf_hi_ok_sh",
+	"wing_rf_hi_ok_sh",
+	"wing_lr_hi_ok_sh",
+	"wing_rr_hi_ok_sh",
+	"roof_coils_shadows",
+	"interiorbttf",
+	"wiresexterior",
+	"wiresinterior",
+	"fluxcoils",
+	"fluxcoilsholders",
+	"keychain",
+	"consoletoptm",
+	"wcontrollftm",
+	"wcontrolrftm",
+	"gloveboxgauges",
+	"gloveboxgaugeslights",
+	"pchamberemptylight",
+	"gloveboxopen",
+	"tcddisplay",
+	"compass",
+	"digitalspeedo",
+	"tcdhandle",
+	"tcdswitch",
+	"stwheelbuttons",
+	"stwheelbuttonslights",
+	"fluxcapacitor",
+	"fluxcapacitorglass",
+	"fluxcapacitortubes",
+	"bulkhead",
+	"sid",
+	"pchamberneedle",
+	"pchamberrefneedle",
+	"ppowerneedle",
+	"primaryneedle",
+	"overheadconsole",
+	"overheadconsolelights",
+	"tcdkeypadbutton0",
+	"tcdkeypadbutton1",
+	"tcdkeypadbutton2",
+	"tcdkeypadbutton3",
+	"tcdkeypadbutton4",
+	"tcdkeypadbutton5",
+	"tcdkeypadbutton6",
+	"tcdkeypadbutton7",
+	"tcdkeypadbutton8",
+	"tcdkeypadbutton9",
+	"tcdkeypadbuttonenter",
 };
 
-const map<Hood, vector<string>> hoodComponents = {
-	{ HOOD_STOCK, {} },
-	{ HOOD_HOODBOX, { "bonnetbttf3" } },
+const vector<string> GRILL_HITCH_STOCK_COMPONENTS = {
+
+	"bump_front_hi_ok_grill",
 };
 
-const map<Hitch, vector<string>> hitchComponents = {
-	{ HITCH_NONE, {} },
-	{ HITCH_ATTACHED, { "hitch" } },
+const vector<string> GRILL_HITCH_TM_COMPONENTS = {
+	"grillhitch",
+	"bump_front_hi_ok_grilltm",
 };
 
-
-const map<TimeMachine, vector<string>> timeMachineComponents = {
-	{ TIME_MACHINE_NONE, {
-		"gloveboxclosed",
-		"cargonet",
-		"consoletop",
-		"consoletopcontrols",
-		"passengerseatbelt",
-		"consoleacgrills",
-		"enginecover",
-		"boot_hi_ok",
-		"windscreen_rearview",
-		"wing_lr_hi_ok_glass",
-		"wing_rr_hi_ok_glass",
-		"back_glass",
-		"platestock",
-		"exhaustmodel",
-	}},
-	{ TIME_MACHINE_ATTACHED, {
-		"bttfparts",
-		"wing_lf_hi_ok_sh",
-		"wing_rf_hi_ok_sh",
-		"wing_lr_hi_ok_sh",
-		"wing_rr_hi_ok_sh",
-		"roof_coils_shadows",
-		"interiorbttf",
-		"wiresexterior",
-		"wiresinterior",
-		"fluxcoils",
-		"fluxcoilsholders",
-		"keychain",
-		"consoletoptm",
-		"wcontrollftm",
-		"wcontrolrftm",
-		"gloveboxgauges",
-		"gloveboxgaugeslights",
-		"pchamberemptylight",
-		"gloveboxopen",
-		"tcddisplay",
-		"compass",
-		"digitalspeedo",
-		"tcdhandle",
-		"tcdswitch",
-		"stwheelbuttons",
-		"stwheelbuttonslights",
-		"fluxcapacitor",
-		"fluxcapacitorglass",
-		"fluxcapacitortubes",
-		"bulkhead",
-		"sid",
-		"pchamberneedle",
-		"pchamberrefneedle",
-		"ppowerneedle",
-		"primaryneedle",
-		"overheadconsole",
-		"overheadconsolelights",
-		"tcdkeypadbutton0",
-		"tcdkeypadbutton1",
-		"tcdkeypadbutton2",
-		"tcdkeypadbutton3",
-		"tcdkeypadbutton4",
-		"tcdkeypadbutton5",
-		"tcdkeypadbutton6",
-		"tcdkeypadbutton7",
-		"tcdkeypadbutton8",
-		"tcdkeypadbutton9",
-		"tcdkeypadbuttonenter",
-	}}
+const vector<string> GRILL_BRACKET_STOCK_COMPONENTS = {
+	"grillhitchbracketbttf1",
 };
 
-const map<GrillHitch, vector<string>> grillHitchComponents = {
-	{ GRILL_HITCH_STOCK, {
-		"bump_front_hi_ok_grill",
-	}},
-	{ GRILL_HITCH_TM, {
-		"grillhitch",
-		"bump_front_hi_ok_grilltm",
-	}},
+const vector<string> GRILL_BRACKET_HOVER_COMPONENTS = {
+	"grillhitchbracketbttf2",
 };
 
-const string plutoniumChamberComponents[] = {
+const vector<string> PLUTONIUM_CHAMBER_COMPONENTS = {
 	"bttf1",
 	"nohookbttf1",
 	"reactorlidbttf1",
 };
 
-const string mrFusionComponents[] = {
+const vector<string> MR_FUSION_COMPONENTS = {
 	"bttf2",
 	"mrfusion",
 	"fusionlatch",
 };
 
-const string bulovaClockComponents[] = {
+const vector<string> BULOVA_CLOCK_COMPONENTS = {
 	"hourhand",
 	"minutehand",
 	"clockhammer",
@@ -172,90 +145,153 @@ const string bulovaClockComponents[] = {
 	"clock",
 };
 
-const string fireboxGaugeComponents[] = {
+const vector<string> FIREBOX_GAUGE_COMPONENTS = {
 	"fireboxgauge",
 	"fireboxgaugeneedle",
 };
 
-const map<DriveTrain, vector<string>> driveTrainComponents{
-	{ DRIVETRAIN_STOCK, {
-		"frontsuspbttf1",
-		"exhaustmodeltm",
-		"xchassis",
-		"underbody",
-	}},
-	{ DRIVETRAIN_HOVER, {
-		// BTTF2 parts
-		"xchassisbttf2",
-		"underbodybttf2",
-
-		// Suspension
-		"strutrb",
-		"holderrb",
-		"shockpistonrb",
-		"shocklb",
-
-		"strutlb",
-		"holderlb",
-		"shockpistonlb",
-		"shocklb",
-
-		"strutrf",
-		"holderrf",
-		"shockpistonrf",
-		"shockrf",
-
-		"strutlf",
-		"holderlf",
-		"shockpistonlf",
-		"shocklf",
-	}}
+const vector<string> DRIVETRAIN_STOCK_COMPONENTS = {
+	"frontsuspbttf1",
+	"exhaustmodeltm",
+	"xchassis",
+	"underbody",
 };
 
-const map<Wheel, vector<string>> wheelComponents = {
-	{ WHEEL_STOCK, {
-		"wheelbttf1rb",
-		"tirebttf1rb",
+const vector<string> DRIVETRAIN_HOVER_COMPONENTS = {
+	// BTTF2 parts
+	"xchassisbttf2",
+	"underbodybttf2",
 
-		"wheelbttf1lb",
-		"tirebttf1lb",
+	// Suspension
+	"strutrb",
+	"holderrb",
+	"shockpistonrb",
+	"shocklb",
 
-		"wheelbttf1rf",
-		"tirebttf1rf",
+	"strutlb",
+	"holderlb",
+	"shockpistonlb",
+	"shocklb",
 
-		"wheelbttf1lf",
-		"tirebttf1lf",
-	}},
-	{ WHEEL_WHITEWALLS, {
-		"wheelbttf3rb",
-		"tirebttf3rb",
-		"hubcapbttf3rb",
+	"strutrf",
+	"holderrf",
+	"shockpistonrf",
+	"shockrf",
 
-		"wheelbttf3lb",
-		"tirebttf3lb",
-		"hubcapbttf3lb",
-
-		"wheelbttf3rf",
-		"tirebttf3rf",
-		"hubcapbttf3rf",
-
-		"wheelbttf3lf",
-		"tirebttf3lf",
-		"hubcapbttf3lf",
-	}},
-	{ WHEEL_RAILROAD, {
-		"wheelbttf3rrrb",
-		"wheelbttf3rrlb",
-		"wheelbttf3rrrf",
-		"wheelbttf3rrlf",
-	}}
+	"strutlf",
+	"holderlf",
+	"shockpistonlf",
+	"shocklf",
 };
 
-const string plutoniumComponents[] = {
-	"plutcan"
-	"plutcanliquid"
-	"plutcaninterior"
-	"plut"
-	"pluttop"
-	"plutbox"
+const vector<string> BRAKE_COMPONENTS = {
+	"wheel_rb",
+	"wheel_lb",
+	"wheel_rf",
+	"wheel_lf",
+};
+
+const vector<string> WHEEL_STOCK_COMPONENTS = {
+	"wheelbttf1rb",
+	"tirebttf1rb",
+
+	"wheelbttf1lb",
+	"tirebttf1lb",
+
+	"wheelbttf1rf",
+	"tirebttf1rf",
+
+	"wheelbttf1lf",
+	"tirebttf1lf",
+};
+
+const vector<string> WHEEL_WHITEWALLS_COMPONENTS = {
+	"wheelbttf3rb",
+	"tirebttf3rb",
+	"hubcapbttf3rb",
+
+	"wheelbttf3lb",
+	"tirebttf3lb",
+	"hubcapbttf3lb",
+
+	"wheelbttf3rf",
+	"tirebttf3rf",
+	"hubcapbttf3rf",
+
+	"wheelbttf3lf",
+	"tirebttf3lf",
+	"hubcapbttf3lf",
+};
+
+const vector<string> WHEEL_RAILROAD_COMPONENTS = {
+	"wheelbttf3rrrb",
+	"wheelbttf3rrlb",
+	"wheelbttf3rrrf",
+	"wheelbttf3rrlf",
+};
+
+const vector<string> THRUSTER_COMPONENTS = {
+	"thrusterbttf2rb",
+	"thrusterbttf2lb",
+	"thrusterbttf2rf",
+	"thrusterbttf2lf",
+};
+
+const vector<string> PLUTONIUM_COMPONENTS = {
+	"plutcan",
+	"plutcanliquid",
+	"plutcaninterior",
+	"plut",
+	"pluttop",
+	"plutbox",
+};
+
+const vector<string> GLOWING_COMPONENTS = {
+	"fluxcapacitorlightson",
+	"lightFL",
+	"lightFR",
+	"lowbeamslight",
+	"highbeamslight",
+	"turnsignalllight",
+	"turnsignalrlight",
+	"turnlightrb",
+	"turnlightlb",
+	"turnlightrf",
+	"turnlightlf",
+	"door_lf_hi_ok_lights",
+	"door_rf_hi_ok_lights",
+	"doorlflights",
+	"doorrflights",
+	"overheadconsoleelight",
+	"fluxcoilson",
+	"brklights",
+	"revlights",
+	"headlightshighon",
+	"seatbeltlight",
+	"lambdalight",
+	"oillight",
+	"doorajarlight",
+	"fuellight",
+	"brakelight",
+	"batterylight",
+	"pchamberemptylight",
+	"stwheelbuttonslights",
+	"overheadconsolelights",
+	"rpmneedle",
+	"voltsneedle",
+	"oilneedle",
+	"fuelneedle",
+	"tempneedle",
+	"speedoneedle",
+	"fxthrusterbttf2rbon",
+	"fxthrusterbttf2rbth",
+	"fxthrusterbttf2rfon",
+	"fxthrusterbttf2rfth",
+	"fxthrusterbttf2lbon",
+	"fxthrusterbttf2lbth",
+	"fxthrusterbttf2lfon",
+	"fxthrusterbttf2lfth",
+	"inner_vents",
+	"inner_ventsglow",
+	"bottomlights",
 };

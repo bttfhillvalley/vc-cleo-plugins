@@ -1,0 +1,65 @@
+#pragma once
+
+enum Plate {
+	PLATE_STOCK,
+	PLATE_OUTATIME,
+	PLATE_BARCODE,
+};
+
+enum Hook {
+	HOOK_NONE,
+	HOOK_HOLDER,
+	HOOK_SIDE,
+	HOOK_UP,
+};
+
+enum Hood {
+	HOOD_STOCK,
+	HOOD_HOODBOX,
+};
+
+enum Hitch {
+	HITCH_NONE,
+	HITCH_ATTACHED,
+};
+
+enum DriveTrain {
+	DRIVETRAIN_STOCK,
+	DRIVETRAIN_HOVER,
+};
+
+enum Wheel {
+	WHEEL_STOCK,
+	WHEEL_WHITEWALLS,
+	WHEEL_RAILROAD,
+};
+
+enum TimeMachine {
+	BODY_STOCK,
+	BODY_TIME_MACHINE,
+};
+
+enum RearDeck {
+	REAR_DECK_PLUTONIUM,
+	REAR_DECK_FUSION,
+};
+
+enum GrillHitch {
+	GRILL_HITCH_STOCK,
+	GRILL_HITCH_TM,
+};
+
+enum GrillBracket {
+	GRILL_BRACKET_STOCK,
+	GRILL_BRACKET_HOVER,
+};
+
+enum BulovaClock {
+	BULOVA_CLOCK_NONE,
+	BULOVA_CLOCK_ATTACHED,
+};
+
+enum FireBoxGauge {
+	FIREBOX_GAUGE_NONE,
+	FIREBOX_GAUGE_ATTACHED,
+};

@@ -1,16 +1,94 @@
 #include "../constants.h"
 #include "../utils/math.h"
 #include "../vehicle/components.h"
+#include "../vehicle/handling.h"
 
-#include "components.h"
 #include "delorean.h"
 
-map<int, Delorean> deloreanMap;
+map<CVehicle*, Delorean*> deloreanMap;
 
-Delorean::Delorean(int handle) {
-	vehicleHandle = handle;
-	CVehicle* vehicle = CPools::GetVehicle(handle);
+Delorean::Delorean(CVehicle* vehicle) {
 	timeMachine = reinterpret_cast<CAutomobile*>(vehicle);
+	SetGlow();
+	ShowStock();
+	UpdateHandling(vehicle);
+}
+
+void Delorean::ShowStock() {
+	ShowComponents(BRAKE_COMPONENTS);
+	HideHoverComponents(BRAKE_COMPONENTS);
+	HideHoverComponents(THRUSTER_COMPONENTS);
+	HideAllHoverOptions(WHEEL_OPTIONS);
+
+	ShowOption(WHEEL_OPTIONS, WHEEL_STOCK);
+	ShowOption(BODY_OPTIONS, BODY_STOCK);
+	ShowOption(GRILL_HITCH_OPTIONS, GRILL_HITCH_STOCK);
+	HideAllOptions(GRILL_BRACKET_OPTIONS);
+	HideAllOptions(REAR_DECK_OPTIONS);
+
+	HideAllOptions(PLATE_OPTIONS);
+	ShowOption(HOOD_OPTIONS, HOOD_STOCK);
+	ShowOption(HITCH_OPTIONS, HITCH_NONE);
+	ShowOption(HOOK_OPTIONS, HOOK_NONE);
+	ShowOption(DRIVETRAIN_OPTIONS, DRIVETRAIN_STOCK);
+	ShowOption(BULOVA_CLOCK_OPTIONS, BULOVA_CLOCK_NONE);
+	ShowOption(FIREBOX_GAUGE_OPTIONS, FIREBOX_GAUGE_NONE);
+
+	HideComponents(PLUTONIUM_COMPONENTS);
+}
+
+void Delorean::SetGlow() {
+	for (const auto& it : GLOWING_COMPONENTS) {
+		const char* component = it.c_str();
+		setGlow(timeMachine, component, 1);
+		setVisibility(timeMachine, component, 0);
+	}
+}
+
+void Delorean::SetComponentVisibility(const vector<string>& components, int visible, string prefix = "") {
+	for (string name : components) {
+		setVisibility(timeMachine, (prefix + name).c_str(), visible);
+	}
+}
+
+void Delorean::ShowHoverComponents(const vector<string>& components) {
+	SetComponentVisibility(components, 1, "fx");
+}
+
+void Delorean::HideHoverComponents(const vector<string>& components) {
+	SetComponentVisibility(components, 0, "fx");
+}
+
+void Delorean::ShowComponents(const vector<string>& components) {
+	SetComponentVisibility(components, 1);
+}
+
+void Delorean::HideComponents(const vector<string>& components) {
+	SetComponentVisibility(components, 0);
+}
+
+void Delorean::ShowOption(const map<int, vector<string>>& options, int option) {
+	for (const auto& it : options) {
+		(it.first == option) ? ShowComponents(it.second) : HideComponents(it.second);
+	}
+}
+
+void Delorean::ShowHoverOption(const map<int, vector<string>>& options, int option) {
+	for (const auto& it : options) {
+		(it.first == option) ? ShowHoverComponents(it.second) : HideHoverComponents(it.second);
+	}
+}
+
+void Delorean::HideAllOptions(const map<int, vector<string>>& options) {
+	for (const auto& it : options) {
+		HideComponents(it.second);
+	}
+}
+
+void Delorean::HideAllHoverOptions(const map<int, vector<string>>& options) {
+	for (const auto& it : options) {
+		HideHoverComponents(it.second);
+	}
 }
 
 void Delorean::AnimateDoorStruts() {

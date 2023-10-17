@@ -31,7 +31,7 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 	float fHeading = atan2(vehicle->m_placement.up.y, vehicle->m_placement.up.x);
 
 	if (!CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE)) {
-		//fThrust = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
+		fThrust = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
 		fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
 		if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
 			fThrust = CPad::GetPad(0)->GetCarGunUpDown() / 128.0f;
