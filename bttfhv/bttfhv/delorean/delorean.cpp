@@ -9,9 +9,9 @@ map<CVehicle*, Delorean*> deloreanMap;
 
 Delorean::Delorean(CVehicle* vehicle) {
 	timeMachine = reinterpret_cast<CAutomobile*>(vehicle);
-	SetGlow();
+	Setup();
+
 	ShowStock();
-	UpdateHandling(vehicle);
 }
 
 void Delorean::ShowStock() {
@@ -37,11 +37,41 @@ void Delorean::ShowStock() {
 	HideComponents(PLUTONIUM_COMPONENTS);
 }
 
-void Delorean::SetGlow() {
-	for (const auto& it : GLOWING_COMPONENTS) {
-		const char* component = it.c_str();
+void Delorean::Setup() {
+	SetupGlow();
+	SetupSid();
+	SetupPlutoniumBox();
+	SetupShifter();
+	SetupSpeedo();
+	SetupTimeCircuits();
+
+	UpdateHandling(timeMachine);
+}
+
+void Delorean::SetupGlow() {
+	for (const auto& component : GLOWING_COMPONENTS) {
+		setGlow(timeMachine, component, 1);
+	}
+
+	for (const auto& component : GLOWING_HIDDEN_COMPONENTS) {
 		setGlow(timeMachine, component, 1);
 		setVisibility(timeMachine, component, 0);
+	}
+}
+
+void Delorean::SetupPlutoniumBox() {
+	for (int index = 1; index <= 12; index++) {
+		setVisibility(timeMachine, getComponentIndex("plutcan", index), 0);
+		setVisibility(timeMachine, getComponentIndex("plutcanliquid", index), 0);
+		setVisibility(timeMachine, getComponentIndex("plutcaninterior", index), 0);
+		setVisibility(timeMachine, getComponentIndex("plut", index), 0);
+	}
+}
+
+void Delorean::SetupSpeedo() {
+	string digit;
+	for (int index = 10; index <= 29; index++) {
+		SetGlowAndHideIndex(timeMachine, "digitalspeedodigit", index);
 	}
 }
 
@@ -103,4 +133,9 @@ void Delorean::AnimateDoorStruts() {
 	rotateComponent(timeMachine, "doorrfstrut_", 0.0f, rightStrutAngle, 0.0f);
 	moveComponent(timeMachine, "doorlfstrutp", 0.0f, 0.0f, leftPiston - 0.259f);
 	moveComponent(timeMachine, "doorrfstrutp", 0.0f, 0.0f, rightPiston - 0.259f);
+}
+
+void Delorean::Update() {
+	AnimateDoorStruts();
+	AnimateShifter();
 }

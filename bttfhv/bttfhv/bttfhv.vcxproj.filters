@@ -56,6 +56,15 @@
     <ClCompile Include="vehicle\handling.cpp">
       <Filter>vehicle</Filter>
     </ClCompile>
+    <ClCompile Include="delorean\sid.cpp">
+      <Filter>delorean</Filter>
+    </ClCompile>
+    <ClCompile Include="delorean\timecircuits.cpp">
+      <Filter>delorean</Filter>
+    </ClCompile>
+    <ClCompile Include="delorean\shifter.cpp">
+      <Filter>delorean</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />

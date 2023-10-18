@@ -63,3 +63,13 @@ enum FireBoxGauge {
 	FIREBOX_GAUGE_NONE,
 	FIREBOX_GAUGE_ATTACHED,
 };
+
+enum Shifter {
+	SHIFTER_N = -1,
+	SHIFTER_R,
+	SHIFTER_1,
+	SHIFTER_2,
+	SHIFTER_3,
+	SHIFTER_4,
+	SHIFTER_5,
+};

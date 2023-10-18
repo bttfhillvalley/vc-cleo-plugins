@@ -1,14 +1,22 @@
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <sstream>
 #include "CClumpModelInfo.h"
 
 #include "../rw/utils.h"
 #include "../utils/math.h"
 #include "components.h"
 
+string getComponentIndex(string name, int index) {
+	stringstream ss;
+	ss << name << index;
+	return ss.str();
+}
 
-void setVisibility(CEntity* model, const char* component, int visible) {
+void setVisibility(CEntity* model, string component, int visible) {
 	int visibility = 0;
 	if (model) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
 		if (frame) {
 			RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
 			if (visible != visibility) {
@@ -18,10 +26,10 @@ void setVisibility(CEntity* model, const char* component, int visible) {
 	}
 }
 
-int getVisibility(CEntity* model, const char* component) {
+int getVisibility(CEntity* model, string component) {
 	int visibility = 0;
 	if (model) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
 		if (frame) {
 			RwFrameForAllObjects(frame, GetAtomicVisibilityCB, &visibility);
 		}
@@ -29,9 +37,9 @@ int getVisibility(CEntity* model, const char* component) {
 	return visibility;
 }
 
-void moveComponent(CEntity* model, const char* component, float x, float y, float z) {
+void moveComponent(CEntity* model, string component, float x, float y, float z) {
 	if (model) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
 		if (frame) {
 			CMatrix cmmatrix(&frame->modelling, false);
 			cmmatrix.SetTranslateOnly(x, y, z);
@@ -40,9 +48,9 @@ void moveComponent(CEntity* model, const char* component, float x, float y, floa
 	}
 }
 
-void rotateComponent(CEntity* model, const char* component, float rx, float ry, float rz) {
+void rotateComponent(CEntity* model, string component, float rx, float ry, float rz) {
 	if (model) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component);
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
 		if (frame) {
 			CMatrix cmatrix(&frame->modelling, false);
 			CVector cpos(cmatrix.pos);
@@ -53,9 +61,35 @@ void rotateComponent(CEntity* model, const char* component, float rx, float ry, 
 	}
 }
 
-void setColor(CVehicle* vehicle, const char* component, int red, int green, int blue) {
+CVector getComponentRotation(CEntity* model, string component) {
+	CVector rotation;
+	if (model) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
+		if (frame) {
+			CMatrix cmatrix(&frame->modelling, false);
+			rotation.z = atan2f(cmatrix.right.y, cmatrix.up.y);
+			if (rotation.z < 0.0f)
+				rotation.z += (float)(2.0f * M_PI);
+			float s = sinf(rotation.z);
+			float c = cosf(rotation.z);
+			rotation.x = atan2f(-cmatrix.at.y, s * cmatrix.right.y + c * cmatrix.up.y);
+			if (rotation.x < 0.0f)
+				rotation.x += (float)(2.0f * M_PI);
+			rotation.y = atan2f(-(cmatrix.right.z * c - cmatrix.up.z * s), cmatrix.right.x * c - cmatrix.up.x * s);
+			if (rotation.y < 0.0f)
+				rotation.y += (float)(2.0f * M_PI);
+
+			rotation.x = degrees(rotation.x);
+			rotation.y = degrees(rotation.y);
+			rotation.z = degrees(rotation.z);
+		}
+	}
+	return rotation;
+}
+
+void setColor(CVehicle* vehicle, string component, int red, int green, int blue) {
 	if (vehicle) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component.c_str());
 		if (frame) {
 			RpAtomic* atomic;
 			RpGeometry* geometry;
@@ -68,9 +102,9 @@ void setColor(CVehicle* vehicle, const char* component, int red, int green, int 
 	}
 }
 
-void setAlpha(CVehicle* vehicle, const char* component, int alpha) {
+void setAlpha(CVehicle* vehicle, string component, int alpha) {
 	if (vehicle) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component.c_str());
 		if (frame) {
 			RpAtomic* atomic;
 			RpGeometry* geometry;
@@ -82,10 +116,10 @@ void setAlpha(CVehicle* vehicle, const char* component, int alpha) {
 	}
 }
 
-RwUInt8 getAlpha(CVehicle* vehicle, const char* component) {
+RwUInt8 getAlpha(CVehicle* vehicle, string component) {
 	RwUInt8 alpha = 0;
 	if (vehicle) {
-		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component.c_str());
 
 		if (frame) {
 			RpAtomic* atomic;
@@ -99,7 +133,7 @@ RwUInt8 getAlpha(CVehicle* vehicle, const char* component) {
 	return alpha;
 }
 
-void fadeAlpha(CVehicle* vehicle, const char* component, int target, int fade) {
+void fadeAlpha(CVehicle* vehicle, string component, int target, int fade) {
 	int alpha = getAlpha(vehicle, component);
 	target = max(0, target);
 	target = min(target, 255);
@@ -114,8 +148,8 @@ void fadeAlpha(CVehicle* vehicle, const char* component, int target, int fade) {
 	setAlpha(vehicle, component, alpha);
 }
 
-void setGlow(CVehicle* vehicle, const char* component, int glow) {
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component);
+void setGlow(CVehicle* vehicle, string component, int glow) {
+	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component.c_str());
 	if (frame) {
 		RpAtomic* atomic;
 		RpGeometry* geometry;
@@ -125,10 +159,9 @@ void setGlow(CVehicle* vehicle, const char* component, int glow) {
 	}
 }
 
-int getCurrentDigit(CVehicle* vehicle, const char* component) {
-	char digitComponent[128];
+int getCurrentDigit(CVehicle* vehicle, string component) {
 	for (int digit = 0; digit < 20; digit++) {
-		sprintf(digitComponent, "%s%d", component, digit);
+		string digitComponent = getComponentIndex(component, digit);
 		int visibility = getVisibility(vehicle, digitComponent);
 		if (visibility > 0) {
 			return digit;
@@ -137,25 +170,45 @@ int getCurrentDigit(CVehicle* vehicle, const char* component) {
 	return -1;
 }
 
-void digitOff(CVehicle* vehicle, const char* component) {
-	char digitComponent[128];
+void digitOff(CVehicle* vehicle, string component) {
 	int digit = getCurrentDigit(vehicle, component);
 	if (digit != -1) {
-		sprintf(digitComponent, "%s%d", component, digit);
+		string digitComponent = getComponentIndex(component, digit);
 		setVisibility(vehicle, digitComponent, 0);
 	}
 }
 
-void digitOn(CVehicle* vehicle, const char* component, int digit) {
+void digitOn(CVehicle* vehicle, string component, int digit) {
 	if (digit == -1) {
 		digitOff(vehicle, component);
 		return;
 	}
-	char digitComponent[128];
-	sprintf(digitComponent, "%s%d", component, digit);
+	string digitComponent = getComponentIndex(component, digit);
 	int visibility = getVisibility(vehicle, digitComponent);
 	if (visibility == 0) {
 		digitOff(vehicle, component);
 		setVisibility(vehicle, digitComponent, 1);
 	}
+}
+
+unsigned char getWheelStatusAll(CVehicle* vehicle) {
+	unsigned char status = 0;
+	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+	for (int n = 0; n < 4; n++) {
+		status <<= 2;
+		status |= automobile->m_carDamage.GetWheelStatus(n);
+	}
+	return status;
+}
+
+void SetGlowAndHideIndex(CVehicle* vehicle, string component, int index) {
+	string componentIndex;
+	if (index >= 0) {
+		componentIndex = getComponentIndex(component, index);
+	}
+	else {
+		componentIndex = component;
+	}
+	setGlow(vehicle, componentIndex, 1);
+	setVisibility(vehicle, componentIndex, 0);
 }

@@ -170,7 +170,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				deloreanMap.erase(vehicle);
 			}
 			else {
-				delorean->AnimateDoorStruts();
+				delorean->Update();
 			}
 
 			// Car attachment

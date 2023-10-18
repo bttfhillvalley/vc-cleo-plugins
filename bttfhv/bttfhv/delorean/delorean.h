@@ -7,6 +7,8 @@
 #include "components.h"
 #include "options.h"
 
+#define GAME_SPEED_TO_METERS_PER_SECOND 50.0f
+
 using namespace std;
 
 class Delorean
@@ -19,7 +21,14 @@ public:
 	Delorean(CVehicle* vehicle);
 
 	bool IsWrecked() { return timeMachine->m_nState == STATUS_WRECKED; }
-	void SetGlow();
+	float GetSpeed() { return timeMachine->GetSpeed().Magnitude() * GAME_SPEED_TO_METERS_PER_SECOND; }
+	void Setup();
+	void SetupGlow();
+	void SetupPlutoniumBox();
+	void SetupShifter();
+	void SetupSid();
+	void SetupSpeedo();
+	void SetupTimeCircuits();
 	void ShowStock();
 	void SetComponentVisibility(const vector<string>& components, int visible, string prefix);
 	void ShowComponents(const vector<string>& components);
@@ -30,7 +39,11 @@ public:
 	void ShowHoverOption(const map<int, vector<string>>& options, int option);
 	void HideAllOptions(const map<int, vector<string>>& options);
 	void HideAllHoverOptions(const map<int, vector<string>>& options);
+
 	void AnimateDoorStruts();
+	void AnimateShifter();
+
+	void Update();
 };
 
 extern map<CVehicle*, Delorean*> deloreanMap;

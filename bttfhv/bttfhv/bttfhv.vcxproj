@@ -102,6 +102,9 @@
     <ClCompile Include="configuration\fileloader.cpp" />
     <ClCompile Include="delorean\components.h" />
     <ClCompile Include="delorean\delorean.cpp" />
+    <ClCompile Include="delorean\shifter.cpp" />
+    <ClCompile Include="delorean\sid.cpp" />
+    <ClCompile Include="delorean\timecircuits.cpp" />
     <ClCompile Include="opcodes\opcodes_animation.cpp" />
     <ClCompile Include="opcodes\opcodes_building.cpp" />
     <ClCompile Include="opcodes\opcodes_effects.cpp" />

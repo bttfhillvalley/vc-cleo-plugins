@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <sstream>
 #include "CModelInfo.h"
 #include "CParticle.h"
 #include "CWorld.h"
@@ -329,8 +330,7 @@ eOpcodeResult __stdcall isCarComponentIndexVisible(CScript* script)
 {
 	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	int visibility = getVisibility(vehicle, component);
 	script->UpdateCompareFlag(visibility != 0);
 	return OR_CONTINUE;
@@ -340,8 +340,7 @@ eOpcodeResult __stdcall isCarComponentIndexNotVisible(CScript* script)
 {
 	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	int visibility = getVisibility(vehicle, component);
 	script->UpdateCompareFlag(visibility == 0);
 	return OR_CONTINUE;
@@ -359,8 +358,7 @@ eOpcodeResult __stdcall setCarComponentGlowIndex(CScript* script)
 {
 	script->Collect(4);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	setGlow(vehicle, component, Params[3].nVar);
 	return OR_CONTINUE;
 }
@@ -369,8 +367,7 @@ eOpcodeResult __stdcall setCarComponentIndexVisibility(CScript* script)
 {
 	script->Collect(4);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	setVisibility(vehicle, component, Params[3].nVar);
 	return OR_CONTINUE;
 }
@@ -387,8 +384,7 @@ eOpcodeResult __stdcall setCarComponentIndexColor(CScript* script)
 {
 	script->Collect(6);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	setColor(vehicle, component, Params[3].nVar, Params[4].nVar, Params[5].nVar);
 	return OR_CONTINUE;
 }
@@ -410,8 +406,7 @@ eOpcodeResult __stdcall setCarComponentIndexAlpha(CScript* script)
 {
 	script->Collect(4);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	if (isPlayerInCar(vehicle) || !isPlayerInModel(vehicle->m_nModelIndex)) {
 		setAlpha(vehicle, component, Params[3].nVar);
 	}
@@ -438,8 +433,7 @@ eOpcodeResult __stdcall fadeCarComponentIndexAlpha(CScript* script)
 {
 	script->Collect(5);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	if (isPlayerInCar(vehicle) || !isPlayerInModel(vehicle->m_nModelIndex)) {
 		fadeAlpha(vehicle, component, Params[3].nVar, Params[4].nVar);
 	}
@@ -478,8 +472,7 @@ eOpcodeResult __stdcall getCarComponentIndexAlpha(CScript* script)
 {
 	script->Collect(3);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	Params[0].nVar = getAlpha(vehicle, component);
 	script->Store(1);
 	return OR_CONTINUE;
@@ -497,8 +490,7 @@ eOpcodeResult __stdcall moveCarComponentIndex(CScript* script)
 {
 	script->Collect(6);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	moveComponent(vehicle, component, Params[3].fVar, Params[4].fVar, Params[5].fVar);
 	return OR_CONTINUE;
 }
@@ -547,8 +539,7 @@ eOpcodeResult __stdcall rotateCarComponentIndex(CScript* script)
 {
 	script->Collect(5);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	char component[256];
-	sprintf(component, "%s%d", Params[1].cVar, Params[2].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
 	rotateComponent(vehicle, Params[3].cVar, Params[4].fVar, Params[5].fVar, Params[6].fVar);
 	return OR_CONTINUE;
 }
@@ -790,16 +781,9 @@ eOpcodeResult __stdcall getWheelStatus(CScript* script)
 {
 	script->Collect(1);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	CAutomobile* automobile;
-	int nWheels = 4;
 	unsigned char status = -1;
 	if (vehicle) {
-		status = 0;
-		automobile = reinterpret_cast<CAutomobile*>(vehicle);
-		for (int i = 0; i < nWheels; i++) {
-			status <<= 2;
-			status |= automobile->m_carDamage.GetWheelStatus(i);
-		}
+		status = getWheelStatusAll(vehicle);
 	}
 	Params[0].nVar = status;
 	script->Store(1);

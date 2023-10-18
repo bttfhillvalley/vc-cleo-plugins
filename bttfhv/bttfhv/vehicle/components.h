@@ -1,15 +1,23 @@
 #pragma once
 #include "plugin.h"
 
-void setVisibility(CEntity* model, const char* component, int visible);
-int getVisibility(CEntity* model, const char* component);
-void moveComponent(CEntity* model, const char* component, float x, float y, float z);
-void rotateComponent(CEntity* model, const char* component, float rx, float ry, float rz);
-void setColor(CVehicle* vehicle, const char* component, int red, int green, int blue);
-void setAlpha(CVehicle* vehicle, const char* component, int alpha);
-RwUInt8 getAlpha(CVehicle* vehicle, const char* component);
-void fadeAlpha(CVehicle* vehicle, const char* component, int target, int fade);
-void setGlow(CVehicle* vehicle, const char* component, int glow);
-int getCurrentDigit(CVehicle* vehicle, const char* component);
-void digitOff(CVehicle* vehicle, const char* component);
-void digitOn(CVehicle* vehicle, const char* component, int digit);
+using namespace std;
+string getComponentIndex(string name, int index);
+void setVisibility(CEntity* model, string component, int visible);
+int getVisibility(CEntity* model, string component);
+void moveComponent(CEntity* model, string component, float x, float y, float z);
+inline void moveComponent(CEntity* model, string component, CVector v) { moveComponent(model, component, v.x, v.y, v.z); }
+void rotateComponent(CEntity* model, string component, float rx, float ry, float rz);
+inline void rotateComponent(CEntity* model, string component, CVector v) { rotateComponent(model, component, v.x, v.y, v.z); }
+CVector getComponentRotation(CEntity* model, string component);
+void setColor(CVehicle* vehicle, string component, int red, int green, int blue);
+void setAlpha(CVehicle* vehicle, string component, int alpha);
+RwUInt8 getAlpha(CVehicle* vehicle, string component);
+void fadeAlpha(CVehicle* vehicle, string component, int target, int fade);
+void setGlow(CVehicle* vehicle, string component, int glow);
+int getCurrentDigit(CVehicle* vehicle, string component);
+void digitOff(CVehicle* vehicle, string component);
+void digitOn(CVehicle* vehicle, string component, int digit);
+unsigned char getWheelStatusAll(CVehicle* vehicle);
+
+void SetGlowAndHideIndex(CVehicle* vehicle, string component, int index);

@@ -69,3 +69,13 @@ const map<int, vector<string>> FIREBOX_GAUGE_OPTIONS = {
 	{ FIREBOX_GAUGE_NONE, {} },
 	{ FIREBOX_GAUGE_ATTACHED, FIREBOX_GAUGE_COMPONENTS },
 };
+
+const map<int, string> SHIFTER_VALUES = {
+	{ SHIFTER_N, "shiftern" },
+	{ SHIFTER_R, "shifterr" },
+	{ SHIFTER_1, "shifter1" },
+	{ SHIFTER_2, "shifter2" },
+	{ SHIFTER_3, "shifter3" },
+	{ SHIFTER_4, "shifter4" },
+	{ SHIFTER_5, "shifter5" },
+};
