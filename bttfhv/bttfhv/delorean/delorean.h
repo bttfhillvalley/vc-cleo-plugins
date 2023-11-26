@@ -11,12 +11,30 @@
 
 using namespace std;
 
+enum BONNET_STATE {
+	BONNET_CLOSED,
+	BONNET_CLOSING,
+	BONNET_OPENING,
+	BONNET_OPEN
+};
+
+enum BOOT_STATE {
+	BOOT_CLOSED,
+	BOOT_CLOSING,
+	BOOT_OPENING,
+	BOOT_OPEN
+};
+
 class Delorean
 {
 public:
 	int vehicleHandle;
 
 	CAutomobile* timeMachine;
+	unsigned char leftDoor;
+	unsigned char rightDoor;
+	unsigned char bonnetState;
+	unsigned char bootState;
 
 	Delorean(CVehicle* vehicle);
 
@@ -39,9 +57,15 @@ public:
 	void ShowHoverOption(const map<int, vector<string>>& options, int option);
 	void HideAllOptions(const map<int, vector<string>>& options);
 	void HideAllHoverOptions(const map<int, vector<string>>& options);
+	bool IsTimeMachine();
 
-	void AnimateDoorStruts();
-	void AnimateShifter();
+	void HandleBonnet();
+	void HandleBoot();
+
+	void ProcessDoor();
+	void ProcessBonnet();
+	void ProcessShifter();
+
 
 	void Update();
 };

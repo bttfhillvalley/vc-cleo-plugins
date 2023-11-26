@@ -1,7 +1,10 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <iostream>
 #include <sstream>
 #include "CClumpModelInfo.h"
+#include "CModelInfo.h"
+#include "CVehicleModelInfo.h"
 
 #include "../rw/utils.h"
 #include "../utils/math.h"
@@ -67,17 +70,17 @@ CVector getComponentRotation(CEntity* model, string component) {
 		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
 		if (frame) {
 			CMatrix cmatrix(&frame->modelling, false);
-			rotation.z = atan2f(cmatrix.right.y, cmatrix.up.y);
-			if (rotation.z < 0.0f)
-				rotation.z += (float)(2.0f * M_PI);
-			float s = sinf(rotation.z);
-			float c = cosf(rotation.z);
-			rotation.x = atan2f(-cmatrix.at.y, s * cmatrix.right.y + c * cmatrix.up.y);
-			if (rotation.x < 0.0f)
-				rotation.x += (float)(2.0f * M_PI);
-			rotation.y = atan2f(-(cmatrix.right.z * c - cmatrix.up.z * s), cmatrix.right.x * c - cmatrix.up.x * s);
-			if (rotation.y < 0.0f)
-				rotation.y += (float)(2.0f * M_PI);
+			float sy = sqrtf(cmatrix.right.x * cmatrix.right.x + cmatrix.up.x * cmatrix.up.x);
+			if (sy > 1e-6) {
+				rotation.x = atan2f(-cmatrix.at.y, cmatrix.at.z);
+				rotation.y = atan2f(-cmatrix.at.x, sy);
+				rotation.z = atan2f(cmatrix.up.x, cmatrix.right.x);
+			}
+			else {
+				rotation.x = atan2f(-cmatrix.up.z, cmatrix.up.y);
+				rotation.y = atan2f(-cmatrix.at.x, sy);
+				rotation.z = 0.0f;
+			}
 
 			rotation.x = degrees(rotation.x);
 			rotation.y = degrees(rotation.y);
@@ -211,4 +214,14 @@ void SetGlowAndHideIndex(CVehicle* vehicle, string component, int index) {
 	}
 	setGlow(vehicle, componentIndex, 1);
 	setVisibility(vehicle, componentIndex, 0);
+}
+
+void setVehicleComponentFlags(CVehicle* vehicle, string component, unsigned int flags) {
+	if (vehicle) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component.c_str());
+		if (frame) {
+			CVehicleModelInfo* mi = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehicle->m_nModelIndex));
+			mi->SetVehicleComponentFlags(frame, flags);
+		}
+	}
 }

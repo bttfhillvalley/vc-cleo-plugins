@@ -2,8 +2,6 @@
 #define GRAVITY (0.008f)
 #define Clamp(v, low, high) ((v) < (low) ? (low) : (v) > (high) ? (high) : (v))
 #define SQR(x) ((x) * (x))
-#define BODY_PIVOT (0.364084f)
-#define DOOR_PIVOT (0.105361f)
 #define KURUMA_ID 20
 #define AIRTRAIN_ID 40
 

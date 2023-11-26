@@ -65,6 +65,11 @@
     <ClCompile Include="delorean\shifter.cpp">
       <Filter>delorean</Filter>
     </ClCompile>
+    <ClCompile Include="vehicle.cpp" />
+    <ClCompile Include="player.cpp" />
+    <ClCompile Include="delorean\doors.cpp">
+      <Filter>delorean</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />
@@ -107,6 +112,8 @@
     <ClInclude Include="vehicle\handling.h">
       <Filter>vehicle</Filter>
     </ClInclude>
+    <ClInclude Include="player.h" />
+    <ClInclude Include="vehicle.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="opcodes">

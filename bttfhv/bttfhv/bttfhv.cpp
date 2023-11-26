@@ -16,6 +16,7 @@
 #include "utils\math.h"
 #include "vehicle\attachment.h"
 #include "vehicle\components.h"
+#include "vehicle\handling.h"
 #include "vehicle\hover.h"
 
 #include "delorean\delorean.h"
@@ -110,6 +111,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F4A, setCarComponentIndexColor);
 		Opcodes::RegisterOpcode(0x3F4B, updateHandling);
 		Opcodes::RegisterOpcode(0x3F4C, setBuildingComponentVisibility);
+		Opcodes::RegisterOpcode(0x3F4E, setCarComponentFlags);
+		Opcodes::RegisterOpcode(0x3F4F, setCarComponentFlagsIndex);
 		Opcodes::RegisterOpcode(0x3F50, isCarComponentNotVisible);
 		Opcodes::RegisterOpcode(0x3F51, isCarComponentIndexNotVisible);
 		Opcodes::RegisterOpcode(0x3F52, fadeCarComponentAlpha);
@@ -148,12 +151,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F9C, setCarLights);
 		Opcodes::RegisterOpcode(0x3F9D, getCarLights);
 
-
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
 		//Reserving 0x3F18-0x3F1F for get command
 
 		Events::vehicleRenderEvent.before += [&](CVehicle* vehicle) {
+			// Flying handling
+			UpdateFlyingHandling(vehicle);
+
 			// Delorean stuff
 			Delorean* delorean;
 			auto it = deloreanMap.find(vehicle);
@@ -209,6 +214,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			removeObjectQueue.clear();
 			LoadAdditionalHandlingData();
 			LoadAdditionalVehicleColours();
+
+		};
+
+		Events::initScriptsEvent += [] {
+			UpdateHandling();
 		};
 
 		Events::gameProcessEvent += [&] {
@@ -263,7 +273,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 						if (soundMap[itr->first].vehicle) {
 							// Stop sound if wrecked
 							int index = CPools::GetVehicleRef(soundMap[itr->first].vehicle);
-							if (index < 0 || soundMap[itr->first].vehicle->m_nState == 5) {
+							if (index < 0 || soundMap[itr->first].vehicle->m_nState == STATUS_WRECKED || soundMap[itr->first].vehicle->m_nVehicleFlags.bIsDrowning) {
 								soundMap[itr->first].sound->stop();
 								soundMap[itr->first].sound->drop();
 								itr = soundMap.erase(itr);

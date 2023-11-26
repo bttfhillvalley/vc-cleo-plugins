@@ -59,6 +59,8 @@ eOpcodeResult __stdcall getCarComponentPosition(CScript* script);
 eOpcodeResult __stdcall getCarComponentOffset(CScript* script);
 eOpcodeResult __stdcall rotateCarComponent(CScript* script);
 eOpcodeResult __stdcall rotateCarComponentIndex(CScript* script);
+eOpcodeResult __stdcall setCarComponentFlags(CScript* script);
+eOpcodeResult __stdcall setCarComponentFlagsIndex(CScript* script);
 eOpcodeResult __stdcall getCarComponentRotation(CScript* script);
 eOpcodeResult __stdcall rotateBonnet(CScript* script);
 eOpcodeResult __stdcall rotateBoot(CScript* script);

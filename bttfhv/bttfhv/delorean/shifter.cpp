@@ -18,7 +18,7 @@ void Delorean::SetupShifter() {
 	}
 }
 
-void Delorean::AnimateShifter() {
+void Delorean::ProcessShifter() {
 	int wheelStatus = getWheelStatusAll(timeMachine);
 	int gear = -1;
 	if (GetSpeed() > 1.0f && wheelStatus != HOVER_WHEELS)

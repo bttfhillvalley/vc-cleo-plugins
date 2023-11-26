@@ -548,29 +548,30 @@ eOpcodeResult __stdcall getCarComponentRotation(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	RwFrame* frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, Params[1].cVar);
-	if (frame) {
-		CMatrix cmatrix(&frame->modelling, false);
-		Params[2].fVar = atan2f(cmatrix.right.y, cmatrix.up.y);
-		if (Params[2].fVar < 0.0f)
-			Params[2].fVar += (float)(2.0f * M_PI);
-		float s = sinf(Params[2].fVar);
-		float c = cosf(Params[2].fVar);
-		Params[0].fVar = atan2f(-cmatrix.at.y, s * cmatrix.right.y + c * cmatrix.up.y);
-		if (Params[0].fVar < 0.0f)
-			Params[0].fVar += (float)(2.0f * M_PI);
-		Params[1].fVar = atan2f(-(cmatrix.right.z * c - cmatrix.up.z * s), cmatrix.right.x * c - cmatrix.up.x * s);
-		if (Params[1].fVar < 0.0f)
-			Params[1].fVar += (float)(2.0f * M_PI);
-
-		Params[0].fVar = degrees(Params[0].fVar);
-		Params[1].fVar = degrees(Params[1].fVar);
-		Params[2].fVar = degrees(Params[2].fVar);
-	}
+	CVector rotation = getComponentRotation(vehicle, Params[1].cVar);
+	Params[0].fVar = rotation.x;
+	Params[1].fVar = rotation.y;
+	Params[2].fVar = rotation.z;
 	script->Store(3);
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall setCarComponentFlags(CScript* script)
+{
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	setVehicleComponentFlags(vehicle, Params[1].cVar, Params[2].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall setCarComponentFlagsIndex(CScript* script)
+{
+	script->Collect(4);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
+	setVehicleComponentFlags(vehicle, component, Params[3].fVar);
+	return OR_CONTINUE;
+}
 
 eOpcodeResult __stdcall rotateBonnet(CScript* script)
 {
@@ -578,7 +579,7 @@ eOpcodeResult __stdcall rotateBonnet(CScript* script)
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	if (vehicle) {
 		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
-		automobile->OpenDoor(CAR_DOOR_LF, DOOR_FRONT_LEFT, Params[1].fVar);
+		automobile->OpenDoor(CAR_BONNET, BONNET, Params[1].fVar);
 	}
 	return OR_CONTINUE;
 }
