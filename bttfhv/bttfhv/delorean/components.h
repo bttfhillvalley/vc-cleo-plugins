@@ -14,20 +14,28 @@ const vector<string> PLATE_BARCODE_COMPONENTS = {
 };
 
 const vector<string> HOOK_NONE_COMPONENTS = {
-	"nohookbttf1",
+
 };
 
 const vector<string> HOOK_HOLDER_COMPONENTS = {
 	"holderbttf1",
+	"hookguidebttf1",
 };
 
 const vector<string> HOOK_SIDE_COMPONENTS = {
-	"hookbttf1",
 	"holderbttf1",
+	"hookguidebttf1",
+	"hookbttf1",
+	"hookcableplugbttf1",
+	"hookcablesoffbttf1",
 };
 
 const vector<string> HOOK_UP_COMPONENTS = {
-	"hookandholderbttf1",
+	"holderbttf1",
+	"hookguidebttf1",
+	"hookbttf1",
+	"hookcableplugbttf1",
+	"hookcablesonbttf1",
 };
 
 const vector<string> HOODBOX_COMPONENTS = {

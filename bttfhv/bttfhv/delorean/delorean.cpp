@@ -102,15 +102,28 @@ void Delorean::HideComponents(const vector<string>& components) {
 }
 
 void Delorean::ShowOption(const map<int, vector<string>>& options, int option) {
+	vector<string> showOption;
 	for (const auto& it : options) {
-		(it.first == option) ? ShowComponents(it.second) : HideComponents(it.second);
+		if (it.first == option) {
+			showOption = it.second;
+		} else {
+			HideComponents(it.second);
+		}
 	}
+	ShowComponents(showOption);
 }
 
 void Delorean::ShowHoverOption(const map<int, vector<string>>& options, int option) {
+	vector<string> showOption;
 	for (const auto& it : options) {
-		(it.first == option) ? ShowHoverComponents(it.second) : HideHoverComponents(it.second);
+		if (it.first == option) {
+			showOption = it.second;
+		}
+		else {
+			HideHoverComponents(it.second);
+		}
 	}
+	ShowHoverComponents(showOption);
 }
 
 void Delorean::HideAllOptions(const map<int, vector<string>>& options) {
