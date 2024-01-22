@@ -13,7 +13,7 @@ eOpcodeResult __stdcall createLight(CScript* script)
 
 eOpcodeResult __stdcall createParticle(CScript* script)
 {
-	script->Collect(12);
+	script->Collect(13);
 	CVector pos = CVector(Params[1].fVar, Params[2].fVar, Params[3].fVar);
 	CVector vel = CVector(Params[4].fVar, Params[5].fVar, Params[6].fVar);
 	RwRGBA color;
@@ -22,6 +22,6 @@ eOpcodeResult __stdcall createParticle(CScript* script)
 	color.green = Params[9].nVar;
 	color.blue = Params[10].nVar;
 	color.alpha = Params[11].nVar;
-	CParticle::AddParticle((tParticleType)Params[0].nVar, pos, vel, NULL, Params[7].fVar, &color, 0, 0, 0, 0);
+	CParticle::AddParticle((tParticleType)Params[0].nVar, pos, vel, NULL, Params[7].fVar, &color, 0, 0, 0, Params[12].nVar);
 	return OR_CONTINUE;
 }
