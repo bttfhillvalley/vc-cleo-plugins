@@ -101,6 +101,7 @@ eOpcodeResult __stdcall setHandBrake(CScript* script);
 eOpcodeResult __stdcall setSteeringAngle(CScript* script);
 eOpcodeResult __stdcall getSteeringAngle(CScript* script);
 eOpcodeResult __stdcall createLight(CScript* script);
+eOpcodeResult __stdcall createParticle(CScript* script);
 eOpcodeResult __stdcall isAttached(CScript* script);
 eOpcodeResult __stdcall attachVehicle(CScript* script);
 eOpcodeResult __stdcall detachVehicle(CScript* script);

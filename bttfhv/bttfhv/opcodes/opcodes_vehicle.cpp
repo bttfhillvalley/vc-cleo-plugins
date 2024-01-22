@@ -52,9 +52,13 @@ eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 		float normalSpringLength = normalUpperLimit - normalLowerLimit;
 		float normalLineLength = normalSpringLength + wheelRadius;
 
-		float extendedUpperLimit = normalUpperLimit - 0.15f;
-		float extendedLowerLimit = normalLowerLimit - 0.15f;
-		float extendedSpringLength = extendedUpperLimit - extendedLowerLimit;
+		float extendedFrontUpperLimit = normalUpperLimit - 0.15f;
+		float extendedFrontLowerLimit = normalLowerLimit - 0.15f;
+		float extendedFrontSpringLength = extendedFrontUpperLimit - extendedFrontLowerLimit;
+
+		float extendedRearUpperLimit = normalUpperLimit - 0.08f;
+		float extendedRearLowerLimit = normalLowerLimit - 0.08f;
+		float extendedRearSpringLength = extendedRearUpperLimit - extendedRearLowerLimit;
 
 		// Update collision model
 		playerInfo->m_ColModel = *colModel;
@@ -69,10 +73,10 @@ eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 			// uppermost wheel position
 			if (i % 2) {
 
-				pos.z += normalUpperLimit;
+				pos.z += extendedRearUpperLimit;
 			}
 			else {
-				pos.z += extendedUpperLimit;
+				pos.z += extendedFrontUpperLimit;
 			}
 			specialColModel->m_pLines[i].m_vStart = pos;
 
@@ -81,17 +85,17 @@ eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 			specialColModel->m_pLines[i].m_vEnd = pos;
 
 			if (i % 2) {
-				automobile->fSuspSpringLength[i] = normalSpringLength;
+				automobile->fSuspSpringLength[i] = extendedRearSpringLength;
 			}
 			else {
-				automobile->fSuspSpringLength[i] = extendedSpringLength;
+				automobile->fSuspSpringLength[i] = extendedFrontSpringLength;
 			}
 			automobile->fSuspLineLength[i] = specialColModel->m_pLines[i].m_vStart.z - specialColModel->m_pLines[i].m_vEnd.z;
 		}
 		automobile->fWheelAngleMul = 0.75f;
 		// Adjust col model to include suspension lines
 		mi->GetWheelPosn(0, pos);
-		float minz = pos.z + extendedLowerLimit - wheelRadius;
+		float minz = pos.z + extendedFrontLowerLimit - wheelRadius;
 		if (minz < colModel->m_boundBox.m_vecMin.z)
 			colModel->m_boundBox.m_vecMin.z = minz;
 		float radius = max(colModel->m_boundBox.m_vecMin.Magnitude(), colModel->m_boundBox.m_vecMax.Magnitude());
