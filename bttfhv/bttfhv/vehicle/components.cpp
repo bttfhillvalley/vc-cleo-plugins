@@ -163,7 +163,7 @@ void setGlow(CVehicle* vehicle, string component, int glow) {
 }
 
 int getCurrentDigit(CVehicle* vehicle, string component) {
-	for (int digit = 0; digit < 20; digit++) {
+	for (int digit = 0; digit < 71; digit++) {
 		string digitComponent = getComponentIndex(component, digit);
 		int visibility = getVisibility(vehicle, digitComponent);
 		if (visibility > 0) {

@@ -305,6 +305,8 @@ const vector<string> GLOWING_HIDDEN_COMPONENTS = {
 	"flux6",
 	"fluxcapacitorlightson",
 	"fluxcoilson",
+	"wormhole",
+	"wormhole1",
 	"fxthrusterbttf2rbon",
 	"fxthrusterbttf2rbth",
 	"fxthrusterbttf2rfon",

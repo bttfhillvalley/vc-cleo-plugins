@@ -463,6 +463,15 @@ eOpcodeResult __stdcall carComponentDigitOn(CScript* script)
 	return OR_CONTINUE;
 }
 
+eOpcodeResult __stdcall carComponentDigitGet(CScript* script)
+{
+	script->Collect(2);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	Params[0].nVar = getCurrentDigit(vehicle, Params[1].cVar);
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
 eOpcodeResult __stdcall getCarComponentAlpha(CScript* script)
 {
 	script->Collect(2);

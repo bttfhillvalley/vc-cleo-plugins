@@ -160,3 +160,14 @@ eOpcodeResult __stdcall setDoppler(CScript* script)
 	m_soundEngine->setDopplerEffectParameters(Params[0].fVar, Params[1].fVar);
 	return OR_CONTINUE;
 }
+
+eOpcodeResult __stdcall setReverb(CScript* script)
+{
+	script->Collect(4);
+	string key = getKeyIndex(Params[0].cVar, Params[1].nVar);
+	if (soundMap.contains(key)) {
+		ISoundEffectControl* fx = soundMap[key].sound->getSoundEffectControl();
+		fx->enableWavesReverbSoundEffect(0.0f, 0.0f, Params[2].fVar, Params[3].fVar);
+	}
+	return OR_CONTINUE;
+}

@@ -20,8 +20,9 @@ RpMaterial* SetRedCB(RpMaterial* material, void* data)
 {
 	unsigned int value = reinterpret_cast<unsigned int>(data);
 	RwRGBA* col = (RwRGBA*)RpMaterialGetColor(material);	// get rid of const
-	RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
-	col->red = value;
+	material->color.red = value;
+	//wSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
+	//col->red = value;
 	return material;
 }
 
@@ -29,8 +30,9 @@ RpMaterial* SetGreenCB(RpMaterial* material, void* data)
 {
 	unsigned int value = reinterpret_cast<unsigned int>(data);
 	RwRGBA* col = (RwRGBA*)RpMaterialGetColor(material);	// get rid of const
-	RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
-	col->green = value;
+	material->color.green = value;
+	//RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
+	//col->green = value;
 	return material;
 }
 
@@ -38,8 +40,9 @@ RpMaterial* SetBlueCB(RpMaterial* material, void* data)
 {
 	unsigned int value = reinterpret_cast<unsigned int>(data);
 	RwRGBA* col = (RwRGBA*)RpMaterialGetColor(material);	// get rid of const
-	RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
-	col->blue = value;
+	material->color.blue = value;
+	//RwSurfaceProperties* properties = (RwSurfaceProperties*)RpMaterialGetSurfaceProperties(material);
+	//col->blue = value;
 	return material;
 }
 

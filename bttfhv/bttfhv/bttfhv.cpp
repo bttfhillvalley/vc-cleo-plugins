@@ -130,6 +130,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F5E, setSteeringAngle);
 		Opcodes::RegisterOpcode(0x3F5F, setHandBrake);
 		Opcodes::RegisterOpcode(0x3F60, createParticle);
+		Opcodes::RegisterOpcode(0x3F64, carComponentDigitGet);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
@@ -151,6 +152,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F9B, getCarStatus);
 		Opcodes::RegisterOpcode(0x3F9C, setCarLights);
 		Opcodes::RegisterOpcode(0x3F9D, getCarLights);
+		Opcodes::RegisterOpcode(0x3F9E, setReverb);
 
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);

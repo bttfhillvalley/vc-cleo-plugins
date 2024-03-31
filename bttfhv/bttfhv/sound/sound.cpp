@@ -37,7 +37,7 @@ void playSoundFile(string key, char* filename, bool loop) {
 		return;
 	}
 	cleanupSound(key);
-	soundMap[key].sound = m_soundEngine->play2D(fullpath, loop, false, true);
+	soundMap[key].sound = m_soundEngine->play2D(fullpath, loop, false, true, ESM_AUTO_DETECT, true);
 	soundMap[key].spatial = false;
 }
 
@@ -53,7 +53,7 @@ void playSoundFileLocation(string key, char* filename, bool loop, float x, float
 	pos.Y = -1.0f * y;
 	pos.Z = z;
 	soundMap[key].offset = CVector(pos.X, pos.Y, pos.Z);
-	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, loop, false, true);
+	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, loop, false, true, ESM_AUTO_DETECT, true);
 	soundMap[key].sound->setMinDistance(minDistance);
 	soundMap[key].spatial = true;
 }
@@ -71,7 +71,7 @@ void attachSoundFileToVehicle(CVehicle* vehicle, string key, char* filename, boo
 	Command<Commands::GET_OFFSET_FROM_CAR_IN_WORLD_COORDS>(vehicle, soundMap[key].offset.x, soundMap[key].offset.y, soundMap[key].offset.z, &pos.X, &pos.Y, &pos.Z);
 	pos.Y *= -1.0;
 
-	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, loop, false, true);
+	soundMap[key].sound = m_soundEngine->play3D(fullpath, pos, loop, false, true, ESM_AUTO_DETECT, true);
 	soundMap[key].sound->setMinDistance(minDistance);
 	soundMap[key].spatial = true;
 }
