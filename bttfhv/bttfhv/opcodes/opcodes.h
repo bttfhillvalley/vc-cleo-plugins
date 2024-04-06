@@ -108,6 +108,7 @@ eOpcodeResult __stdcall attachVehicle(CScript* script);
 eOpcodeResult __stdcall detachVehicle(CScript* script);
 eOpcodeResult __stdcall replaceTex(CScript* script);
 eOpcodeResult __stdcall setDoorStatus(CScript* script);
+eOpcodeResult __stdcall createCarComponent(CScript* script);
 
 // Building
 eOpcodeResult __stdcall addBuilding(CScript* script);

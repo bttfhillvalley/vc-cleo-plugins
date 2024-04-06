@@ -5,10 +5,15 @@
 #include "CClumpModelInfo.h"
 #include "CModelInfo.h"
 #include "CVehicleModelInfo.h"
+#include "CTimer.h"
+#include "CWorld.h"
 
 #include "../rw/utils.h"
 #include "../utils/math.h"
+#include "../constants.h"
 #include "components.h"
+
+#define MI_CAR_PANEL 242
 
 string getComponentIndex(string name, int index) {
 	stringstream ss;
@@ -223,5 +228,66 @@ void setVehicleComponentFlags(CVehicle* vehicle, string component, unsigned int 
 			CVehicleModelInfo* mi = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehicle->m_nModelIndex));
 			mi->SetVehicleComponentFlags(frame, flags);
 		}
+	}
+}
+
+CObject* createCarComponent(CVehicle* vehicle, string component) {
+	RwFrame *frame, *carFrame;
+	RpAtomic *atomic;
+	RwMatrix *matrix;
+	CObject *obj;
+	if (vehicle) {
+		carFrame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, component.c_str());
+		if (carFrame) {
+			RwFrameForAllObjects(carFrame, GetAtomicObjectCB, &atomic);
+			obj = new CObject();
+			obj->SetModelIndexNoCreate(MI_CAR_PANEL);
+
+			// object needs base model
+			obj->RefModelInfo(vehicle->m_nModelIndex);
+
+			// create new atomic
+			matrix = RwFrameGetLTM(carFrame);
+			frame = RwFrameCreate();
+			atomic = RpAtomicClone(atomic);
+			*RwFrameGetMatrix(frame) = *matrix;
+			RpAtomicSetFrame(atomic, frame);
+			CClumpModelInfo::SetAtomicRendererCB(atomic, NULL);
+			obj->AttachToRwObject((RwObject*)atomic);
+			obj->m_nFlags.bDontStream = true;
+
+			// init object
+			obj->m_fMass = 10.0f;
+			obj->m_fTurnMass = 25.0f;
+			obj->m_fAirResistance = 0.97f;
+			obj->m_fElasticity = 0.1f;
+			obj->m_fBuoyancyConstant = obj->m_fMass * GRAVITY / 0.75f;
+			obj->m_nObjectType = MISSION_OBJECT;
+			obj->m_nFlags.bIsStatic = false;
+			obj->m_nObjectFlags.bIsPickupObject = false;
+			obj->m_nObjectFlags.bIsVehicleComponent = true;
+			obj->m_nObjectFlags.bNoVehicleCollisionWhenDetached = true;
+			obj->m_nCarColor[0] = vehicle->m_nPrimaryColor;
+			obj->m_nCarColor[1] = vehicle->m_nSecondaryColor;
+
+			obj->m_dwObjectTimer = CTimer::GetCurrentTimeInCycles() + 20000;
+
+			obj->m_vecMoveSpeed = vehicle->m_vecMoveSpeed;
+			if (obj->m_vecMoveSpeed.z > 0.0f) {
+				obj->m_vecMoveSpeed.z *= 1.5f;
+			}
+			else {
+				obj->m_vecMoveSpeed.z *= 0.25f;
+			}
+			obj->m_vecMoveSpeed.x *= 0.75f;
+			obj->m_vecMoveSpeed.y *= 0.75f;
+
+			obj->m_vecTurnSpeed = vehicle->m_vecTurnSpeed * 2.0f;
+
+
+			obj->m_fAirResistance = 0.99f;
+			CWorld::Add(obj);
+		}
+		return obj;
 	}
 }

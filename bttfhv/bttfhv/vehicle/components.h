@@ -20,5 +20,6 @@ int getCurrentDigit(CVehicle* vehicle, string component);
 void digitOff(CVehicle* vehicle, string component);
 void digitOn(CVehicle* vehicle, string component, int digit);
 unsigned char getWheelStatusAll(CVehicle* vehicle);
+CObject* createCarComponent(CVehicle* vehicle, string component);
 
 void SetGlowAndHideIndex(CVehicle* vehicle, string component, int index);

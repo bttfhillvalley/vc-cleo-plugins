@@ -154,6 +154,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F9D, getCarLights);
 		Opcodes::RegisterOpcode(0x3F9E, setReverb);
 		Opcodes::RegisterOpcode(0x3F9F, setDoorStatus);
+		Opcodes::RegisterOpcode(0x3FA0, createCarComponent);
 
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
@@ -164,22 +165,24 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			UpdateFlyingHandling(vehicle);
 
 			// Delorean stuff
-			Delorean* delorean;
-			auto it = deloreanMap.find(vehicle);
-			if (it == deloreanMap.end()) {
-				delorean = new Delorean(vehicle);
-				deloreanMap[vehicle] = delorean;
-			}
-			else {
-				delorean = it->second;
-			}
+			if (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2")) {
+				Delorean* delorean;
+				auto it = deloreanMap.find(vehicle);
+				if (it == deloreanMap.end()) {
+					delorean = new Delorean(vehicle);
+					deloreanMap[vehicle] = delorean;
+				}
+				else {
+					delorean = it->second;
+				}
 
-			if (delorean->IsWrecked()) {
-				delete delorean;
-				deloreanMap.erase(vehicle);
-			}
-			else {
-				delorean->Update();
+				if (delorean->IsWrecked()) {
+					delete delorean;
+					deloreanMap.erase(vehicle);
+				}
+				else {
+					delorean->Update();
+				}
 			}
 
 			// Car attachment
