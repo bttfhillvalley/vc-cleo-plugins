@@ -48,7 +48,7 @@ void Delorean::Setup() {
 	SetupShifter();
 	SetupSpeedo();
 	SetupTimeCircuits();
-
+	SetupWormhole();
 	UpdateHandling(timeMachine);
 }
 
@@ -73,9 +73,15 @@ void Delorean::SetupPlutoniumBox() {
 }
 
 void Delorean::SetupSpeedo() {
-	string digit;
 	for (int index = 10; index <= 29; index++) {
 		SetGlowAndHideIndex(timeMachine, "digitalspeedodigit", index);
+	}
+}
+
+void Delorean::SetupWormhole() {
+	for (int index = 1; index <= 70; index++) {
+		SetGlowAndHideIndex(timeMachine, "wormhole", index);
+		SetGlowAndHideIndex(timeMachine, "wormholer", index);
 	}
 }
 

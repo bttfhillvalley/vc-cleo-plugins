@@ -153,6 +153,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F9C, setCarLights);
 		Opcodes::RegisterOpcode(0x3F9D, getCarLights);
 		Opcodes::RegisterOpcode(0x3F9E, setReverb);
+		Opcodes::RegisterOpcode(0x3F9F, setDoorStatus);
 
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);

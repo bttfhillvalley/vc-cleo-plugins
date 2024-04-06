@@ -47,6 +47,7 @@ public:
 	void SetupSid();
 	void SetupSpeedo();
 	void SetupTimeCircuits();
+	void SetupWormhole();
 	void ShowStock();
 	void SetComponentVisibility(const vector<string>& components, int visible, string prefix);
 	void ShowComponents(const vector<string>& components);

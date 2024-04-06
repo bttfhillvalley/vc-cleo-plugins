@@ -1197,3 +1197,14 @@ eOpcodeResult __stdcall detachVehicle(CScript* script) {
 	detachVehicleFromVehicle(Params[0].nVar);
 	return OR_CONTINUE;
 }
+
+eOpcodeResult __stdcall setDoorStatus(CScript* script) {
+	script->Collect(3);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		automobile->m_carDamage.SetDoorStatus(static_cast<eDoors>(Params[1].nVar), Params[2].nVar);
+	}
+	return OR_CONTINUE;
+}
