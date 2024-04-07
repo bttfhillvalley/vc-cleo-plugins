@@ -1,3 +1,4 @@
+#include "../constants.h"
 #include "../vehicle/components.h"
 #include "delorean.h"
 #define HOVER_WHEELS 0xAA
@@ -21,6 +22,7 @@ void Delorean::SetupShifter() {
 void Delorean::ProcessShifter() {
 	int wheelStatus = getWheelStatusAll(timeMachine);
 	int gear = -1;
+	float target;
 	if (GetSpeed() > 1.0f && wheelStatus != HOVER_WHEELS)
 	{
 		gear = timeMachine->m_nCurrentGear;
@@ -32,10 +34,15 @@ void Delorean::ProcessShifter() {
 	}
 
 	// Animate RPM Needle
-	auto ratio = GEAR_RATIOS.at(gear);
-	float needle = GetSpeed() * get<0>(ratio) + get<1>(ratio);
-	CVector rotation = getComponentRotation(timeMachine, "rpmneedle");
-	float delta = needle - rotation.y;
-	rotation.y += clamp(delta, -5.0f, 5.0f);
-	rotateComponent(timeMachine, "rpmneedle", rotation);
+	if (wheelStatus != HOVER_WHEELS) {
+		auto ratio = GEAR_RATIOS.at(gear);
+		auto wheelSpeed = max(timeMachine->fWheelSpeed[CARWHEEL_REAR_RIGHT], timeMachine->fWheelSpeed[CARWHEEL_REAR_RIGHT]);
+		target = clamp(11.85f * abs(wheelSpeed) * get<0>(ratio) + get<1>(ratio), 5.0f, 360.0f);
+	}
+	else {
+		target = 25.0f;
+	}
+	float delta = clamp(target - rpmNeedle, -5.0f, 5.0f);
+	rpmNeedle += delta;
+	rotateComponent(timeMachine, "rpmneedle", 0.0f, rpmNeedle, 0.0f);
 }

@@ -35,6 +35,7 @@ public:
 	unsigned char rightDoor;
 	unsigned char bonnetState;
 	unsigned char bootState;
+	float rpmNeedle = 0.0f;
 
 	Delorean(CVehicle* vehicle);
 

@@ -165,17 +165,17 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			UpdateFlyingHandling(vehicle);
 
 			// Delorean stuff
-			if (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2")) {
-				Delorean* delorean;
-				auto it = deloreanMap.find(vehicle);
-				if (it == deloreanMap.end()) {
+			Delorean* delorean;
+			auto it = deloreanMap.find(vehicle);
+			if (it == deloreanMap.end()) {
+				if (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2")) {
 					delorean = new Delorean(vehicle);
+					delorean->Update();
 					deloreanMap[vehicle] = delorean;
 				}
-				else {
-					delorean = it->second;
-				}
-
+			}
+			else {
+				delorean = it->second;
 				if (delorean->IsWrecked()) {
 					delete delorean;
 					deloreanMap.erase(vehicle);
