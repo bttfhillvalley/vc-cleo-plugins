@@ -104,9 +104,15 @@ void Delorean::HandleBonnet() {
 		}
 	}
 	float doorAngle;
-
+	CVector relativeVelocity;
 	switch (bonnetState) {
 	case BONNET_OPEN:
+		relativeVelocity = Multiply3x3(timeMachine->m_vecMoveSpeed, timeMachine->m_placement);
+		if (relativeVelocity.y * GAME_SPEED_TO_METERS_PER_SECOND > 30.0f) {
+			GetSpeed();
+			bonnetState = BONNET_CLOSING;
+		}
+		break;
 	case BONNET_CLOSED:
 		break;
 	case BONNET_OPENING:
