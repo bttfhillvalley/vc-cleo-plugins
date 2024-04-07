@@ -168,7 +168,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			Delorean* delorean;
 			auto it = deloreanMap.find(vehicle);
 			if (it == deloreanMap.end()) {
-				if (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2")) {
+				if (vehicle->m_nState != STATUS_WRECKED  && (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2"))) {
 					delorean = new Delorean(vehicle);
 					delorean->Update();
 					deloreanMap[vehicle] = delorean;
