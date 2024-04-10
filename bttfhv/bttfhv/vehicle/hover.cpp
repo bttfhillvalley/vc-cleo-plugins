@@ -10,7 +10,7 @@
 #include "hover.h"
 
 
-int HoverControl(CVehicle* vehicle, bool landing, bool damaged)
+int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 {
 	if (vehicle->m_pFlyingHandling == nullptr)
 		return false;
@@ -26,7 +26,7 @@ int HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 	float fLandingSpeed = 0.1f;
 	float fPedalState = 0.0f;
 	float fThrustAccel = 0.0f;
-	bool bBoostState = CPad::GetPad(0)->GetHandBrake();
+	bool bBoostState = false;
 	if (landing) {
 		fUp -= fLandingSpeed;
 	}
@@ -40,6 +40,11 @@ int HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 
 	if (!CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE)) {
 		fPedalState = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
+		bBoostState = CPad::GetPad(0)->GetHandBrake();
+		if (CPad::GetPad(0)->GetAccelerate() && CPad::GetPad(0)->GetBrake()) {
+			fPedalState = 1.0f;
+			bBoostState = true;
+		}
 		if (fForwardSpeed > 0.0f || fPedalState > 0.0f) {
 			fThrustAccel = (fPedalState - fThrustFallOff * fForwardSpeed) * fThrust;
 		}
@@ -55,7 +60,7 @@ int HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 		}
 
 		fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
-		fHover = fHoverState = (float)((GetKeyState(configKeys.at("KEY_HOVERUP")) & 0x8000) != 0) - (float)((GetKeyState(configKeys.at("KEY_HOVERDN")) & 0x8000) != 0);
+		fHoverState = (float)((GetKeyState(configKeys.at("KEY_HOVERUP")) & 0x8000) != 0) - (float)((GetKeyState(configKeys.at("KEY_HOVERDN")) & 0x8000) != 0);
 		if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
 			fHoverState = CPad::GetPad(0)->GetCarGunUpDown() / 128.0f;
 		}
@@ -67,11 +72,14 @@ int HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 
 		if (landing) {
 			if (vehicle->m_placement.at.z > 0.0f) {
-				fHover = Clamp(fHover, -1.0f * abs(cos(fAttitude)), 0.0f);
+				fHover = Clamp(fHoverState, -1.0f * abs(cos(fAttitude)), 0.0f);
 			}
 			else {
-				fHover = Clamp(fHover, 0.0f, 1.0f * abs(cos(fAttitude)));
+				fHover = Clamp(fHoverState, 0.0f, 1.0f * abs(cos(fAttitude)));
 			}
+		}
+		else {
+			fHover = fHoverState;
 		}
 	}
 	else if (vehicle->m_nState == STATUS_PHYSICS) {
@@ -190,6 +198,6 @@ int HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 			player->m_nUpsideDownCounter = 0;
 		}
 	}
-	return ((fHoverState > 0.0f && !landing && !damaged) ? HOVER_UP : HOVER_NONE) |
-		((fPedalState > 0.0f && bBoostState && !landing && !damaged) ? HOVER_BOOST : HOVER_NONE);
+	return ((fHoverState > 0.8f && vehicle->m_placement.at.z > 0.0f && !landing && !damaged) ? HOVER_UP : HOVER_NONE) |
+		((fPedalState > 0.0f && bBoostState && boost && !landing && !damaged) ? HOVER_BOOST : HOVER_NONE);
 }

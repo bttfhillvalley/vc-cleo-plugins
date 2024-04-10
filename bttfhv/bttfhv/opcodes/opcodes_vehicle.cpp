@@ -154,13 +154,14 @@ eOpcodeResult __stdcall getCurrentGear(CScript* script)
 
 eOpcodeResult __stdcall setHover(CScript* script)
 {
-	script->Collect(3);
+	script->Collect(4);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	bool landing = Params[1].nVar != 0;
-	bool damage = Params[2].nVar != 0;
+	bool boost = Params[1].nVar != 0;
+	bool landing = Params[2].nVar != 0;
+	bool damage = Params[3].nVar != 0;
 	Params[0].nVar = false;
 	if (vehicle) {
-		Params[0].nVar = HoverControl(vehicle, landing, damage);
+		Params[0].nVar = HoverControl(vehicle, boost, landing, damage);
 	}
 	script->Store(1);
 	return OR_CONTINUE;
@@ -584,7 +585,7 @@ eOpcodeResult __stdcall setCarComponentFlagsIndex(CScript* script)
 	script->Collect(4);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	string component = getComponentIndex(Params[1].cVar, Params[2].nVar);
-	setVehicleComponentFlags(vehicle, component, Params[3].fVar);
+	setVehicleComponentFlags(vehicle, component, Params[3].nVar);
 	return OR_CONTINUE;
 }
 

@@ -7,4 +7,4 @@ enum {
 	HOVER_BOOST
 };
 
-int HoverControl(CVehicle* vehicle, bool landing, bool damaged);
+int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged);
