@@ -158,9 +158,11 @@ eOpcodeResult __stdcall setHover(CScript* script)
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	bool landing = Params[1].nVar != 0;
 	bool damage = Params[2].nVar != 0;
+	Params[0].nVar = false;
 	if (vehicle) {
-		HoverControl(vehicle, landing, damage);
+		Params[0].nVar = HoverControl(vehicle, landing, damage);
 	}
+	script->Store(1);
 	return OR_CONTINUE;
 }
 

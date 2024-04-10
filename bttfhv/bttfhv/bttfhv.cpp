@@ -9,6 +9,7 @@
 
 #include "constants.h"
 #include "building\idemap.h"
+#include "configuration\config.h"
 #include "configuration\fileloader.h"
 #include "opcodes\opcodes.h"
 #include "rw\utils.h"
@@ -219,9 +220,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			carAttachments.clear();
 			ideMap.clear();
 			removeObjectQueue.clear();
+			keyMap.clear();
+			configKeys.clear();
+			InitializeKeyMap();
+			LoadKeyConfig();
 			LoadAdditionalHandlingData();
 			LoadAdditionalVehicleColours();
-
 		};
 
 		Events::initScriptsEvent += [] {

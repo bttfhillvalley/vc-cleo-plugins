@@ -3,6 +3,7 @@
 #include "CFileMgr.h"
 
 #include "../utils/math.h"
+#include "config.h"
 #include "fileloader.h"
 
 using namespace std;
@@ -13,6 +14,7 @@ map<string, tHandlingData*> handlingData;
 map<string, tFlyingHandlingData*> flyingHandlingData;
 map<string, tBoatHandlingData*> boatHandlingData;
 map<string, tBikeHandlingData*> bikeHandlingData;
+map<string, int> keyMap;
 
 void ConvertBikeDataToGameUnits(tBikeHandlingData* handling)
 {
@@ -25,6 +27,108 @@ void ConvertBikeDataToGameUnits(tBikeHandlingData* handling)
 bool doesFileExist(const char* filepath) {
 	fstream infile(filepath);
 	return infile.good();
+}
+
+void InitializeKeyMap(void) {
+	// Alphabet
+	keyMap.clear();
+
+	for (char c = 'A'; c <= 'Z'; c++) {
+		keyMap[string(1, c)] = MapVirtualKey(c, MAPVK_VK_TO_VSC);
+	}
+
+	// Number keys
+	for (char c = '0'; c <= '9'; c++) {
+		keyMap[string(1, c)] = MapVirtualKey(c, MAPVK_VK_TO_VSC);
+	}
+
+	// Numpad
+	for (int i = 0; i <= 9; i++) {
+		keyMap["NUM" + to_string(i)] = VK_NUMPAD0 + i;
+	}
+
+	// Function keys
+	for (int i = 1; i <= 12; i++) {
+		keyMap["F" + to_string(i)] = VK_F1 + i - 1;
+	}
+
+	// Special keys
+	keyMap["BACKSPACE"] = VK_BACK;
+	keyMap["TAB"] = VK_TAB;
+	keyMap["RETURN"] = VK_RETURN;
+
+	keyMap["PAUSE"] = VK_PAUSE;
+	keyMap["CAPSLOCK"] = VK_CAPITAL;
+	keyMap["SPACE"] = VK_SPACE;
+	keyMap["PGUP"] = VK_PRIOR;
+	keyMap["PGDN"] = VK_NEXT;
+	keyMap["END"] = VK_END;
+	keyMap["HOME"] = VK_HOME;
+	keyMap["LEFT"] = VK_LEFT;
+	keyMap["UP"] = VK_UP;
+	keyMap["RIGHT"] = VK_RIGHT;
+	keyMap["DOWN"] = VK_DOWN;
+	keyMap["INS"] = VK_INSERT;
+	keyMap["DEL"] = VK_DELETE;
+	keyMap["NUM *"] = VK_MULTIPLY;
+	keyMap["NUM +"] = VK_ADD;
+	keyMap["NUM ."] = VK_SEPARATOR;
+	keyMap["NUM -"] = VK_SUBTRACT;
+	keyMap["NUM /"] = VK_DIVIDE;
+	keyMap["NUM ENT"] = VK_RETURN & 0x8000;
+	keyMap["NUMLOCK"] = VK_NUMLOCK;
+	keyMap["SCROLL LOCK"] = VK_SCROLL;
+	keyMap["LSHIFT"] = VK_LSHIFT;
+	keyMap["RSHIFT"] = VK_RSHIFT;
+	keyMap["LCTRL"] = VK_LCONTROL;
+	keyMap["RCTRL"] = VK_RCONTROL;
+	keyMap["LALT"] = VK_MENU;
+	keyMap["RALT"] = VK_RMENU;
+	keyMap[";"] = VK_OEM_1;
+	keyMap["+"] = VK_OEM_PLUS;
+	keyMap[","] = VK_OEM_COMMA;
+	keyMap["-"] = VK_OEM_MINUS;
+	keyMap["."] = VK_OEM_PERIOD;
+	keyMap["/"] = VK_OEM_2;
+	keyMap["`"] = VK_OEM_3;
+	keyMap["["] = VK_OEM_4;
+	keyMap["\\"] = VK_OEM_5;
+	keyMap["]"] = VK_OEM_6;
+	keyMap["'"] = VK_OEM_7;
+}
+
+void LoadKeyConfig(void) {
+	int fd;
+	char line[256];
+	int start, end;
+	char key[64];
+	char vk[64];
+	if (!doesFileExist(".\\BTTFHV.CFG")) {
+		return;
+	}
+	CFileMgr::SetDir("");
+	fd = CFileMgr::OpenFile("BTTFHV.CFG", "r");
+
+	while (CFileMgr::ReadLine(fd, line, sizeof(line))) {
+		for (start = 0; ; start++)
+			if (line[start] > ' ' || line[start] == '\0' || line[start] == '\n')
+				break;
+		// find end of line
+		for (end = start; ; end++) {
+			if (line[end] == '\0' || line[end] == '\n')
+				break;
+			if (line[end] == '=' || line[end] == '\r')
+				line[end] = ' ';
+		}
+		line[end] = '\0';
+
+		// empty line
+		if (line[start] == '#' || line[start] == '\0')
+			continue;
+
+		sscanf(line, "%s %s", key, vk);
+		configKeys[string(key)] = keyMap[string(vk)];
+	}
 }
 
 void LoadAdditionalHandlingData(void)

@@ -99,6 +99,7 @@
   <ItemGroup>
     <ClCompile Include="bttfhv.cpp" />
     <ClCompile Include="building\idemap.cpp" />
+    <ClCompile Include="configuration\config.cpp" />
     <ClCompile Include="configuration\fileloader.cpp" />
     <ClCompile Include="delorean\components.h" />
     <ClCompile Include="delorean\delorean.cpp" />
@@ -125,6 +126,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="building\idemap.h" />
+    <ClInclude Include="configuration\config.h" />
     <ClInclude Include="configuration\fileloader.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="delorean\options.h" />

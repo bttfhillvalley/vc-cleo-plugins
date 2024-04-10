@@ -4,21 +4,29 @@
 #include "CTimer.h"
 #include "eEntityStatus.h"
 
+#include "../configuration/config.h"
 #include "../constants.h"
 #include "../utils/math.h"
 #include "hover.h"
 
 
-void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
+int HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 {
 	if (vehicle->m_pFlyingHandling == nullptr)
-		return;
-	float fThrust = 0.0f;
+		return false;
+	float fHoverState = 0.0f;
+	float fHover = 0.0f;
+	float fThrust = vehicle->m_pHandlingData->m_transmissionData.m_fEngineAcceleration * 5.0f;
+	float fThrustFallOff = 0.5f / vehicle->m_pHandlingData->m_transmissionData.m_fMaxGearVelocity;
+	float fThrustFallOffBack = -1.0f / vehicle->m_pHandlingData->m_transmissionData.m_fMinGearVelocity;
 	float fPitch = 0.0f;
 	float fRoll = 0.0f;
 	float fYaw = 0.0f;
 	float fUp = 1.0f;
 	float fLandingSpeed = 0.1f;
+	float fPedalState = 0.0f;
+	float fThrustAccel = 0.0f;
+	bool bBoostState = CPad::GetPad(0)->GetHandBrake();
 	if (landing) {
 		fUp -= fLandingSpeed;
 	}
@@ -31,44 +39,59 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 	float fHeading = atan2(vehicle->m_placement.up.y, vehicle->m_placement.up.x);
 
 	if (!CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE)) {
-		fThrust = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
+		fPedalState = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
+		if (fForwardSpeed > 0.0f || fPedalState > 0.0f) {
+			fThrustAccel = (fPedalState - fThrustFallOff * fForwardSpeed) * fThrust;
+		}
+		else {
+			fThrustAccel = (fPedalState - fThrustFallOffBack * fForwardSpeed) * fThrust;
+		}
+
+		// Handle Vent Boost
+		if (fPedalState > 0.0f && bBoostState && !landing) {
+			fThrustAccel *= 0.8f;
+		} else {
+			fThrustAccel *= 0.3f;
+		}
+
 		fPitch = CPad::GetPad(0)->GetSteeringUpDown() / 128.0f;
+		fHover = fHoverState = (float)((GetKeyState(configKeys.at("KEY_HOVERUP")) & 0x8000) != 0) - (float)((GetKeyState(configKeys.at("KEY_HOVERDN")) & 0x8000) != 0);
 		if (CPad::GetPad(0)->PCTempJoyState.RightStickY == CPad::GetPad(0)->GetCarGunUpDown() && abs(CPad::GetPad(0)->PCTempJoyState.RightStickY) > 1.0f) {
-			fThrust = CPad::GetPad(0)->GetCarGunUpDown() / 128.0f;
+			fHoverState = CPad::GetPad(0)->GetCarGunUpDown() / 128.0f;
 		}
 		else if (abs(CPad::GetPad(0)->LookAroundUpDown()) > 1.0f) {
 			fPitch = CPad::GetPad(0)->LookAroundUpDown() / 128.0f;
 		}
 		fRoll = -CPad::GetPad(0)->GetSteeringLeftRight() / 128.0f;
 		fYaw = CPad::GetPad(0)->GetCarGunLeftRight() / 128.0f;
+
 		if (landing) {
 			if (vehicle->m_placement.at.z > 0.0f) {
-				fThrust = Clamp(fThrust, -1.0f * abs(cos(fAttitude)), 0.0f);
+				fHover = Clamp(fHover, -1.0f * abs(cos(fAttitude)), 0.0f);
 			}
 			else {
-				fThrust = Clamp(fThrust, 0.0f, 1.0f * abs(cos(fAttitude)));
+				fHover = Clamp(fHover, 0.0f, 1.0f * abs(cos(fAttitude)));
 			}
 		}
 	}
 	else if (vehicle->m_nState == STATUS_PHYSICS) {
 		if (landing) {
-			fThrust = 0.0f;
+			fHover = 0.0f;
 		}
 		else {
-			fThrust = -fLandingSpeed / flyingHandling->fThrust;
+			fHover = -fLandingSpeed / flyingHandling->fThrust;
 		}
 		fYaw = 0.0f;
 		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
 		fRoll = Clamp(0.5f * -vehicle->m_placement.right.z, -0.1f, 0.1f);
+		fThrustAccel = 0.0f;
 		rm *= 0.97f;
 	}
 	vehicle->m_vecMoveSpeed *= rm;
 	if (!damaged) {
-		fThrust = flyingHandling->fThrust * fThrust;
+		fHover = flyingHandling->fThrust * fHover;
 		if (vehicle->GetPosition().z > 1000.0f)
-			fThrust *= 10.0f / (vehicle->GetPosition().z - 70.0f);
-
-		vehicle->ApplyMoveForce(GRAVITY * vehicle->m_placement.at * fThrust * vehicle->m_fMass * CTimer::ms_fTimeStep);
+			fHover *= 10.0f / (vehicle->GetPosition().z - 70.0f);
 	}
 	else {
 		fPitch = Clamp(fPitch * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.x), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
@@ -89,7 +112,12 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 		}
 		fUp *= cos(fAttitude);
 
+		// Antigravity + Hover
 		vehicle->ApplyMoveForce(GRAVITY * upVector * fUp * vehicle->m_fMass * CTimer::ms_fTimeStep);
+		vehicle->ApplyMoveForce(GRAVITY * vehicle->m_placement.at * fHover * vehicle->m_fMass * CTimer::ms_fTimeStep);
+
+		// Forward thrust
+		vehicle->ApplyMoveForce(fThrustAccel * vehicle->m_placement.up * vehicle->m_fMass * CTimer::ms_fTimeStep);
 
 		CVector forwardVector = vehicle->m_placement.up * (DotProduct(vehicle->m_placement.at, vehicle->m_placement.up) / powf(vehicle->m_placement.up.Magnitude(), 2.0f));
 		CVector rightVector = vehicle->m_placement.at - forwardVector;
@@ -162,4 +190,6 @@ void HoverControl(CVehicle* vehicle, bool landing, bool damaged)
 			player->m_nUpsideDownCounter = 0;
 		}
 	}
+	return ((fHoverState > 0.0f && !landing && !damaged) ? HOVER_UP : HOVER_NONE) |
+		((fPedalState > 0.0f && bBoostState && !landing && !damaged) ? HOVER_BOOST : HOVER_NONE);
 }
