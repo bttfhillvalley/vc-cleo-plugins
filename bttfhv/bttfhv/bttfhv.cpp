@@ -199,13 +199,69 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			}
 		};
 		Events::initGameEvent += [] {
-			//patch::Nop(0x58E59B, 5, true);
-			//patch::Nop(0x58E611, 5, true);
+			patch::SetChar(0x5921BC, 0x66, true); // Engine smoke in rear for Delorean
+			patch::SetInt(0x5921BD, 0x00EDFA81, true);
+			patch::Nop(0x54F429, 5, true); // Disable plane trails
+			patch::Nop(0x58E59B, 5, true); // Disable Tail light point lights
+			patch::Nop(0x58E611, 5, true); // Disable Brake light point lights
+			patch::Nop(0x58CDA7, 13, true); // Disable engine check for lights
+
+			patch::SetFloat(0x69C70C, 1000.0, true); // Change height limit for Delorean
+			patch::SetInt(0x97F2B4, 60000, true); // Set real time
+
+			// Disable STATUS_ABANDONED overriding player controls
+			patch::Nop(0x593F83, 10, true);
+			patch::Nop(0x593F90, 10, true);
+			patch::Nop(0x593FAA, 10, true);
+
+			// These next ones disables the collapsing of frames on particular dummies
+			patch::SetInt(0x699730, 0x80, true); // Front Bumper
+			patch::SetInt(0x69973c, 0x00, true); // Bonnet
+			patch::SetInt(0x699748, 0x00, true); // Wing RF
+			patch::SetInt(0x699754, 0x40, true); // Wing RR
+			patch::SetInt(0x699760, 0x5050, true); // Door RF
+			//patch::SetInt(0x69976c, 0x3150, true); // Door RR
+			patch::SetInt(0x699778, 0x00, true); // Wing LF
+			patch::SetInt(0x699784, 0x20, true); // Wing LR
+			patch::SetInt(0x699790, 0x5030, true); // Door LF
+			//patch::SetInt(0x69979c, 0x3130, true); // Door LR
+			patch::SetInt(0x6997a8, 0x100, true); // Boot
+			//patch::SetInt(0x6997b4, 0x100, true); // Rear Bumper
+			patch::SetInt(0x6997c0, 0xc80, true); // Windscreen
+			//patch::SetInt(0x00579D3F size 5 value 0x90, true);
+			//patch::SetInt(0x00579D4C size 5 value 0x90, true);
+
+			// Delorean slot (237)
+			patch::SetInt(0x6ADD54, 274, true);   // Acceleration Sample (SFX_CAR_REV_7)
+			patch::SetInt(0x6ADD58, 10, true);    // Engine Bank (COBRA)
+			patch::SetInt(0x6ADD5C, 1, true);     // Horn Sample (BMW328)
+			patch::SetInt(0x6ADD60, 12017, true); // Horn Frequency
+			patch::SetInt(0x6ADD64, 0, true);     // Alarm Sample (JEEP)
+			patch::SetInt(0x6ADD68, 9900, true);  // Alarm Frequency
+			patch::SetInt(0x6ADD6C, 1, true);     // Door Type (NEW)
+
+			// Rogers slot (238)
+			patch::SetInt(0x6ADD70, 283, true);   // Acceleration Sample (UNUSED)
+			patch::SetInt(0x6ADD74, 19, true);    // Engine Bank (UNUSED)
+			patch::SetInt(0x6ADD78, 37, true);    // Horn Sample (SFX_PALM_TREE_LO)
+			patch::SetInt(0x6ADD7C, 12017, true); // Horn Frequency
+			patch::SetInt(0x6ADD80, 0, true);     // Alarm Sample (JEEP)
+			patch::SetInt(0x6ADD84, 9900, true);  // Alarm Frequency
+			patch::SetInt(0x6ADD88, 3, true);     // Door Type (AIRBRAKES)
+
+			// Rogers slot (239)
+			patch::SetInt(0x6ADD8C, 283, true);   // Acceleration Sample (UNUSED)
+			patch::SetInt(0x6ADD90, 19, true);    // Engine Bank (UNUSED)
+			patch::SetInt(0x6ADD94, 37, true);    // Horn Sample (SFX_PALM_TREE_LO)
+			patch::SetInt(0x6ADD98, 12017, true); // Horn Frequency
+			patch::SetInt(0x6ADD9C, 0, true);     // Alarm Sample (JEEP)
+			patch::SetInt(0x6ADDA0, 9900, true);  // Alarm Frequency
+			patch::SetInt(0x6ADDA4, 3, true);     // Door Type (AIRBRAKES)
 
 			if (!loadedSound) {
 				m_soundEngine = createIrrKlangDevice();
 				m_soundEngine->setRolloffFactor(1.5f);
-				m_soundEngine->setDopplerEffectParameters(2.0f, 10.0f);
+				m_soundEngine->setDopplerEffectParameters(3.0f, 10.0f);
 				loadedSound = true;
 			}
 			else {
@@ -215,8 +271,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			handlingData.clear();
 			bikeHandlingData.clear();
 			boatHandlingData.clear();
-			carAttachments.clear();
 			flyingHandlingData.clear();
+			deloreanMap.clear();
 			carAttachments.clear();
 			ideMap.clear();
 			removeObjectQueue.clear();
