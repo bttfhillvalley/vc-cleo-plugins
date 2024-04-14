@@ -1,23 +1,38 @@
 #include "CTxdStore.h"
 #include "opcodes.h"
 
-eOpcodeResult __stdcall replaceTex(CScript* script)
-{
+void _replaceTex(const char* originalTxd, const char* originalTexture, const char* replacementTxd, const char* replacementTexture) {
 	CTxdStore::PushCurrentTxd();
-	script->Collect(5);
-	RwTexture* replacement, * original;
-	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot(Params[1].cVar));
-	char texture[256];
-	sprintf(texture, "%s%d", Params[3].cVar, Params[4].nVar);
-	replacement = RwTextureRead(texture, NULL);
+	RwTexture *replacement, *original, *temp;
+	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot(replacementTxd));
+	replacement = RwTextureRead(replacementTexture, NULL);
 	if (replacement) {
-		original = RwTextureRead(Params[2].cVar, NULL);
+		temp = new RwTexture();
+		memcpy(temp, replacement, sizeof(replacement));
+		CTxdStore::PopCurrentTxd();
+		CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot(originalTxd));
+		original = RwTextureRead(originalTexture, NULL);
 		if (original) {
 			memcpy(original, replacement, sizeof(replacement));
 		}
 		RwTextureDestroy(replacement);
 	}
 	CTxdStore::PopCurrentTxd();
+}
+
+eOpcodeResult __stdcall replaceTex(CScript* script)
+{
+	script->Collect(4);
+	_replaceTex(Params[0].cVar, Params[1].cVar, Params[2].cVar, Params[3].cVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall replaceTexIndex(CScript* script)
+{
+	script->Collect(5);
+	char texture[256];
+	sprintf(texture, "%s%d", Params[3].cVar, Params[4].nVar);
+	_replaceTex(Params[0].cVar, Params[1].cVar, Params[2].cVar, texture);
 	return OR_CONTINUE;
 }
 

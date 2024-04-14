@@ -46,7 +46,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F08, addBuilding);
 		Opcodes::RegisterOpcode(0x3F09, removeBuilding);
 		Opcodes::RegisterOpcode(0x3F0A, replaceTex);
-		Opcodes::RegisterOpcode(0x3F0B, wheelSparks);
+		Opcodes::RegisterOpcode(0x3F0B, replaceTexIndex);
 		Opcodes::RegisterOpcode(0x3F0C, setCarCollision);
 		Opcodes::RegisterOpcode(0x3F0D, getDoorAngle);
 		Opcodes::RegisterOpcode(0x3F0E, getWheelAngle);
@@ -131,6 +131,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F5E, setSteeringAngle);
 		Opcodes::RegisterOpcode(0x3F5F, setHandBrake);
 		Opcodes::RegisterOpcode(0x3F60, createParticle);
+		Opcodes::RegisterOpcode(0x3F61, wheelSparks);
+		Opcodes::RegisterOpcode(0x3F62, createCarComponent);
 		Opcodes::RegisterOpcode(0x3F64, carComponentDigitGet);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
@@ -155,7 +157,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F9D, getCarLights);
 		Opcodes::RegisterOpcode(0x3F9E, setReverb);
 		Opcodes::RegisterOpcode(0x3F9F, setDoorStatus);
-		Opcodes::RegisterOpcode(0x3FA0, createCarComponent);
 
 		//Opcodes::RegisterOpcode(0x3F37, replaceTex);
 		//Opcodes::RegisterOpcode(0x3F38, addCompAnims);
@@ -207,7 +208,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			patch::Nop(0x58CDA7, 13, true); // Disable engine check for lights
 
 			patch::SetFloat(0x69C70C, 1000.0, true); // Change height limit for Delorean
-			patch::SetInt(0x97F2B4, 60000, true); // Set real time
+
 
 			// Disable STATUS_ABANDONED overriding player controls
 			patch::Nop(0x593F83, 10, true);
@@ -282,6 +283,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			LoadKeyConfig();
 			LoadAdditionalHandlingData();
 			LoadAdditionalVehicleColours();
+
+			int millis = 60000;
+			auto it = keyMap.find("MILLIS_IN_MINUTE");
+			if (it != keyMap.end()) {
+				millis = it->second;
+			}
+			patch::SetInt(0x97F2B4, millis, true); // Set real time
 		};
 
 		Events::initScriptsEvent += [] {
