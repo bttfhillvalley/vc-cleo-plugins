@@ -5,6 +5,7 @@
 #pragma comment(lib, "VC.CLEO.lib")
 #include "CCamera.h"
 #include "CMenuManager.h"
+#include "CModelInfo.h"
 #include "CWorld.h"
 
 #include "constants.h"
@@ -209,7 +210,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
 			patch::SetFloat(0x69C70C, 1000.0, true); // Change height limit for Delorean
 
-
 			// Disable STATUS_ABANDONED overriding player controls
 			patch::Nop(0x593F83, 10, true);
 			patch::Nop(0x593F90, 10, true);
@@ -258,6 +258,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			patch::SetInt(0x6ADD9C, 0, true);     // Alarm Sample (JEEP)
 			patch::SetInt(0x6ADDA0, 9900, true);  // Alarm Frequency
 			patch::SetInt(0x6ADDA4, 3, true);     // Door Type (AIRBRAKES)
+
+			// Fix
+			int memoryAddress = patch::GetInt(0x55F799, true);
+			CModelInfo::ms_modelInfoPtrs = (CBaseModelInfo**)memoryAddress;
 
 			if (!loadedSound) {
 				m_soundEngine = createIrrKlangDevice();

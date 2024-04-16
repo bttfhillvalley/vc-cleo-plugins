@@ -79,7 +79,6 @@ void UpdateHandling(CVehicle *vehicle) {
 }
 
 void UpdateFlyingHandling(CVehicle* vehicle) {
-	CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
 	CVehicleModelInfo* modelInfo = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehicle->m_nModelIndex));
 
 	string name(modelInfo->m_szName);
