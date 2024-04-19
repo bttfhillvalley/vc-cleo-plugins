@@ -284,7 +284,6 @@ CObject* createCarComponent(CVehicle* vehicle, string component) {
 
 			obj->m_vecTurnSpeed = vehicle->m_vecTurnSpeed * 2.0f;
 
-
 			obj->m_fAirResistance = 0.99f;
 			CWorld::Add(obj);
 		}

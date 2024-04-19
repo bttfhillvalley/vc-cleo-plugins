@@ -127,7 +127,12 @@ void LoadKeyConfig(void) {
 			continue;
 
 		sscanf(line, "%s %s", key, vk);
-		configKeys[string(key)] = keyMap[string(vk)];
+		if (strncmp(key, "KEY", 3) == 0) {
+			configKeys[string(key)] = keyMap[string(vk)];
+		}
+		else {
+			configKeys[string(key)] = atoi(vk);
+		}
 	}
 }
 

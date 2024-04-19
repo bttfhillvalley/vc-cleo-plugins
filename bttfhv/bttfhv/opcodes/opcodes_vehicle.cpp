@@ -1216,7 +1216,7 @@ eOpcodeResult __stdcall createCarComponent(CScript* script) {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
 	CObject* obj = createCarComponent(vehicle, Params[1].cVar);
-	Params[0].nVar = CPools::ms_pObjectPool->GetIndex(obj);
+	Params[0].nVar = CPools::GetObjectRef(obj);
 	script->Store(1);
 	return OR_CONTINUE;
 }
