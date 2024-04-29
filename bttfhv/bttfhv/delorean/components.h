@@ -113,6 +113,18 @@ const vector<string> TIME_MACHINE_COMPONENTS = {
 	"tcdkeypadbutton8",
 	"tcdkeypadbutton9",
 	"tcdkeypadbuttonenter",
+	"roof_fr",
+	"door_lf_hi_ok_fr",
+	"door_lf_hi_ok_window_fr",
+	"door_rf_hi_ok_fr",
+	"door_rf_hi_ok_window_fr",
+	"wing_lf_hi_ok_fr",
+	"wing_lr_hi_ok_fr",
+	"wing_rf_hi_ok_fr",
+	"wing_rr_hi_ok_fr",
+	"chassis_hi_fr",
+	"vents_fr",
+	"bonnet_hi_ok_fr",
 };
 
 const vector<string> GRILL_HITCH_STOCK_COMPONENTS = {
