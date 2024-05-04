@@ -125,6 +125,11 @@ const vector<string> TIME_MACHINE_COMPONENTS = {
 	"chassis_hi_fr",
 	"vents_fr",
 	"bonnet_hi_ok_fr",
+	"fxwheelbttf2rbon",
+	"fxwheelbttf2rfon",
+	"fxwheelbttf2lbon",
+	"fxwheelbttf2lfon",
+	"reactorshield",
 };
 
 const vector<string> GRILL_HITCH_STOCK_COMPONENTS = {
