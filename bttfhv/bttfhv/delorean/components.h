@@ -130,6 +130,7 @@ const vector<string> TIME_MACHINE_COMPONENTS = {
 	"fxwheelbttf2lbon",
 	"fxwheelbttf2lfon",
 	"reactorshield",
+	"ventsweather",
 };
 
 const vector<string> GRILL_HITCH_STOCK_COMPONENTS = {
