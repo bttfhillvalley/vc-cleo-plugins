@@ -80,6 +80,7 @@ const vector<string> TIME_MACHINE_COMPONENTS = {
 	"wcontrollftm",
 	"wcontrolrftm",
 	"gloveboxgauges",
+	"gloveboxgaugesglass",
 	"gloveboxgaugeslights",
 	"pchamberemptylight",
 	"gloveboxopen",
