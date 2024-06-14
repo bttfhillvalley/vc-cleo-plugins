@@ -123,6 +123,7 @@ const vector<string> TIME_MACHINE_COMPONENTS = {
 	"wing_lr_hi_ok_fr",
 	"wing_rf_hi_ok_fr",
 	"wing_rr_hi_ok_fr",
+	"windscreen_hi_ok_fr",
 	"chassis_hi_fr",
 	"vents_fr",
 	"bonnet_hi_ok_fr",
