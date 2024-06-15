@@ -217,13 +217,19 @@ const vector<string> DRIVETRAIN_HOVER_COMPONENTS = {
 	"holderlf",
 	"shockpistonlf",
 	"shocklf",
+
+	// Wheel rotors
+	"fxrotorrb",
+	"fxrotorlb",
+	"fxrotorrf",
+	"fxrotorlb",
 };
 
 const vector<string> BRAKE_COMPONENTS = {
-	"wheel_rb",
-	"wheel_lb",
-	"wheel_rf",
-	"wheel_lf",
+	"rotor_rb",
+	"rotor_lb",
+	"rotor_rf",
+	"rotor_lf",
 };
 
 const vector<string> WHEEL_STOCK_COMPONENTS = {
