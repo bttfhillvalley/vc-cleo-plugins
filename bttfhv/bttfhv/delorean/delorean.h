@@ -53,12 +53,8 @@ public:
 	void SetComponentVisibility(const vector<string>& components, int visible, string prefix);
 	void ShowComponents(const vector<string>& components);
 	void HideComponents(const vector<string>& components);
-	void ShowHoverComponents(const vector<string>& components);
-	void HideHoverComponents(const vector<string>& components);
 	void ShowOption(const map<int, vector<string>>& options, int option);
-	void ShowHoverOption(const map<int, vector<string>>& options, int option);
 	void HideAllOptions(const map<int, vector<string>>& options);
-	void HideAllHoverOptions(const map<int, vector<string>>& options);
 	bool IsTimeMachine();
 
 	void HandleBonnet();

@@ -19,11 +19,6 @@ Delorean::Delorean(CVehicle* vehicle) {
 }
 
 void Delorean::ShowStock() {
-	ShowComponents(BRAKE_COMPONENTS);
-	HideHoverComponents(BRAKE_COMPONENTS);
-	HideHoverComponents(THRUSTER_COMPONENTS);
-	HideAllHoverOptions(WHEEL_OPTIONS);
-
 	ShowOption(WHEEL_OPTIONS, WHEEL_STOCK);
 	ShowOption(BODY_OPTIONS, BODY_STOCK);
 	ShowOption(GRILL_HITCH_OPTIONS, GRILL_HITCH_STOCK);
@@ -39,6 +34,11 @@ void Delorean::ShowStock() {
 	ShowOption(FIREBOX_GAUGE_OPTIONS, FIREBOX_GAUGE_NONE);
 
 	HideComponents(PLUTONIUM_COMPONENTS);
+	HideComponents(THRUSTER_COMPONENTS);
+	HideComponents(FROSTED_COMPONENTS);
+
+	// HACK: This allows CLEO to hook into the model by showing both underbody models
+	setVisibility(timeMachine, "underbodybttf2", 1);
 }
 
 void Delorean::Setup() {
@@ -91,14 +91,6 @@ void Delorean::SetComponentVisibility(const vector<string>& components, int visi
 	}
 }
 
-void Delorean::ShowHoverComponents(const vector<string>& components) {
-	SetComponentVisibility(components, 1, "fx");
-}
-
-void Delorean::HideHoverComponents(const vector<string>& components) {
-	SetComponentVisibility(components, 0, "fx");
-}
-
 void Delorean::ShowComponents(const vector<string>& components) {
 	SetComponentVisibility(components, 1);
 }
@@ -119,28 +111,9 @@ void Delorean::ShowOption(const map<int, vector<string>>& options, int option) {
 	ShowComponents(showOption);
 }
 
-void Delorean::ShowHoverOption(const map<int, vector<string>>& options, int option) {
-	vector<string> showOption;
-	for (const auto& it : options) {
-		if (it.first == option) {
-			showOption = it.second;
-		}
-		else {
-			HideHoverComponents(it.second);
-		}
-	}
-	ShowHoverComponents(showOption);
-}
-
 void Delorean::HideAllOptions(const map<int, vector<string>>& options) {
 	for (const auto& it : options) {
 		HideComponents(it.second);
-	}
-}
-
-void Delorean::HideAllHoverOptions(const map<int, vector<string>>& options) {
-	for (const auto& it : options) {
-		HideHoverComponents(it.second);
 	}
 }
 

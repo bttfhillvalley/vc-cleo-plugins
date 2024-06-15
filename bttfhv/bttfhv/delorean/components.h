@@ -217,65 +217,52 @@ const vector<string> DRIVETRAIN_HOVER_COMPONENTS = {
 	"holderlf",
 	"shockpistonlf",
 	"shocklf",
-
-	// Wheel rotors
-	"fxrotorrb",
-	"fxrotorlb",
-	"fxrotorrf",
-	"fxrotorlb",
-};
-
-const vector<string> BRAKE_COMPONENTS = {
-	"rotor_rb",
-	"rotor_lb",
-	"rotor_rf",
-	"rotor_lf",
 };
 
 const vector<string> WHEEL_STOCK_COMPONENTS = {
-	"wheelbttf1rb",
-	"tirebttf1rb",
+	"fxwheelbttf1rb",
+	"fxtirebttf1rb",
 
-	"wheelbttf1lb",
-	"tirebttf1lb",
+	"fxwheelbttf1lb",
+	"fxtirebttf1lb",
 
-	"wheelbttf1rf",
-	"tirebttf1rf",
+	"fxwheelbttf1rf",
+	"fxtirebttf1rf",
 
-	"wheelbttf1lf",
-	"tirebttf1lf",
+	"fxwheelbttf1lf",
+	"fxtirebttf1lf",
 };
 
 const vector<string> WHEEL_WHITEWALLS_COMPONENTS = {
-	"wheelbttf3rb",
-	"tirebttf3rb",
-	"hubcapbttf3rb",
+	"fxwheelbttf3rb",
+	"fxtirebttf3rb",
+	"fxhubcapbttf3rb",
 
-	"wheelbttf3lb",
-	"tirebttf3lb",
-	"hubcapbttf3lb",
+	"fxwheelbttf3lb",
+	"fxtirebttf3lb",
+	"fxhubcapbttf3lb",
 
-	"wheelbttf3rf",
-	"tirebttf3rf",
-	"hubcapbttf3rf",
+	"fxwheelbttf3rf",
+	"fxtirebttf3rf",
+	"fxhubcapbttf3rf",
 
-	"wheelbttf3lf",
-	"tirebttf3lf",
-	"hubcapbttf3lf",
+	"fxwheelbttf3lf",
+	"fxtirebttf3lf",
+	"fxhubcapbttf3lf",
 };
 
 const vector<string> WHEEL_RAILROAD_COMPONENTS = {
-	"wheelbttf3rrrb",
-	"wheelbttf3rrlb",
-	"wheelbttf3rrrf",
-	"wheelbttf3rrlf",
+	"fxwheelbttf3rrrb",
+	"fxwheelbttf3rrlb",
+	"fxwheelbttf3rrrf",
+	"fxwheelbttf3rrlf",
 };
 
 const vector<string> THRUSTER_COMPONENTS = {
-	"thrusterbttf2rb",
-	"thrusterbttf2lb",
-	"thrusterbttf2rf",
-	"thrusterbttf2lf",
+	"fxthrusterbttf2rb",
+	"fxthrusterbttf2lb",
+	"fxthrusterbttf2rf",
+	"fxthrusterbttf2lf",
 };
 
 const vector<string> PLUTONIUM_COMPONENTS = {
@@ -371,4 +358,20 @@ const vector<string> GLOWING_HIDDEN_COMPONENTS = {
 	"dtcolon",
 	"ptcolon",
 	"ltdcolon",
+};
+
+const vector<string> FROSTED_COMPONENTS = {
+	"roof_fr",
+	"door_lf_hi_ok_fr",
+	"door_lf_hi_ok_window_fr",
+	"door_rf_hi_ok_fr",
+	"door_rf_hi_ok_window_fr",
+	"wing_lr_hi_ok_fr",
+	"wing_rr_hi_ok_fr",
+	"wing_lf_hi_ok_fr",
+	"wing_rf_hi_ok_fr",
+	"windscreen_hi_ok_fr",
+	"chassis_hi_fr",
+	"vents_fr",
+	"bonnet_hi_ok_fr",
 };
