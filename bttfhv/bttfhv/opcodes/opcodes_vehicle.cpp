@@ -33,7 +33,11 @@ eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 {
 	script->Collect(2);
 	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
-	int raise = Params[1].nVar;
+	bool raise = Params[1].nVar;
+	if (raise == vehicle->m_nVehicleFlags.bUsePlayerColModel) {
+		return OR_CONTINUE;
+	}
+
 	if (vehicle) {
 		CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
 		if (!raise) {

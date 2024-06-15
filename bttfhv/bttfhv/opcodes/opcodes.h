@@ -122,7 +122,6 @@ eOpcodeResult __stdcall setBuildingComponentVisibility(CScript* script);
 
 // Animation
 eOpcodeResult __stdcall playCharAnim(CScript* script);
-eOpcodeResult __stdcall loadTxdDict(CScript* script);
 
 // Sound
 eOpcodeResult __stdcall stopAllSounds(CScript* script);

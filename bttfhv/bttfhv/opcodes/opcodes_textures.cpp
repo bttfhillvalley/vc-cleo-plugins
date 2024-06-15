@@ -1,15 +1,23 @@
 #include "CTxdStore.h"
 #include "opcodes.h"
 
+void _loadTxd(const char* txd) {
+	int slot = CTxdStore::FindTxdSlot(txd);
+	if (slot == -1) {
+		slot = CTxdStore::AddTxdSlot(txd);
+		char txd[256];
+		sprintf(txd, "%s", txd);
+		CTxdStore::LoadTxd(slot, txd);
+		CTxdStore::AddRef(slot);
+	}
+	CTxdStore::SetCurrentTxd(slot);
+}
+
 void _replaceTex(const char* originalTxd, const char* originalTexture, const char* replacementTxd, const char* replacementTexture) {
-	CTxdStore::PushCurrentTxd();
 	RwTexture *replacement, *original, *temp;
-	CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot(replacementTxd));
+	_loadTxd(replacementTxd);
 	replacement = RwTextureRead(replacementTexture, NULL);
 	if (replacement) {
-		temp = new RwTexture();
-		memcpy(temp, replacement, sizeof(replacement));
-		CTxdStore::PopCurrentTxd();
 		CTxdStore::SetCurrentTxd(CTxdStore::FindTxdSlot(originalTxd));
 		original = RwTextureRead(originalTexture, NULL);
 		if (original) {
@@ -17,7 +25,6 @@ void _replaceTex(const char* originalTxd, const char* originalTexture, const cha
 		}
 		RwTextureDestroy(replacement);
 	}
-	CTxdStore::PopCurrentTxd();
 }
 
 eOpcodeResult __stdcall replaceTex(CScript* script)
@@ -36,15 +43,23 @@ eOpcodeResult __stdcall replaceTexIndex(CScript* script)
 	return OR_CONTINUE;
 }
 
-eOpcodeResult __stdcall loadTxdDict(CScript* script)
+void _drawSprite(const char* txd, const char* texture, CRect source, CRect dest, float angle)
 {
-	script->Collect(1);
-	char fullpath[128];
-	snprintf(fullpath, 128, "models\\%s.txd", Params[0].cVar);
-	int slot = CTxdStore::FindTxdSlot("script");
-	if (slot == -1)
-		slot = CTxdStore::AddTxdSlot("script");
-	CTxdStore::LoadTxd(slot, fullpath);
-	CTxdStore::AddRef(slot);
+	RwTexture* rwTexture;
+	_loadTxd(txd);
+	rwTexture = RwTextureRead(texture, NULL);
+	if (rwTexture) {
+
+	}
+}
+
+eOpcodeResult __stdcall drawSprite(CScript* script)
+{
+	// txddict texture source(4), dest(4) angle
+	script->Collect(11);
+	CRect source(Params[2].fVar, Params[3].fVar, Params[4].fVar, Params[5].fVar);
+	CRect dest(Params[6].fVar, Params[7].fVar, Params[8].fVar, Params[9].fVar);
+	float angle = Params[10].fVar;
+	_drawSprite(Params[0].cVar, Params[1].cVar, source, dest, angle);
 	return OR_CONTINUE;
 }
