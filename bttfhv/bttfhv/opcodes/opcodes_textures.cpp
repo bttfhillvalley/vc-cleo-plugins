@@ -5,16 +5,16 @@ void _loadTxd(const char* txd) {
 	int slot = CTxdStore::FindTxdSlot(txd);
 	if (slot == -1) {
 		slot = CTxdStore::AddTxdSlot(txd);
-		char txd[256];
-		sprintf(txd, "%s", txd);
-		CTxdStore::LoadTxd(slot, txd);
+		char fullpath[128];
+		snprintf(fullpath, 128, ".\\models\\%s.txd", txd);
+		CTxdStore::LoadTxd(slot, fullpath);
 		CTxdStore::AddRef(slot);
 	}
 	CTxdStore::SetCurrentTxd(slot);
 }
 
 void _replaceTex(const char* originalTxd, const char* originalTexture, const char* replacementTxd, const char* replacementTexture) {
-	RwTexture *replacement, *original, *temp;
+	RwTexture *replacement, *original;
 	_loadTxd(replacementTxd);
 	replacement = RwTextureRead(replacementTexture, NULL);
 	if (replacement) {
