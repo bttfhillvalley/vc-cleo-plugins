@@ -1224,3 +1224,48 @@ eOpcodeResult __stdcall createCarComponent(CScript* script) {
 	script->Store(1);
 	return OR_CONTINUE;
 }
+
+eOpcodeResult __stdcall dmgDrawCarCollidingParticles(CScript* script) {
+	script->Collect(6);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		unsigned char oldColor = automobile->m_nPrimaryColor;
+		if (Params[5].nVar >= 0) {
+			automobile->m_nPrimaryColor = Params[5].nVar;
+		}
+		automobile->dmgDrawCarCollidingParticles(CVector(Params[1].fVar, Params[2].fVar, Params[3].fVar), Params[4].fVar);
+		automobile->m_nPrimaryColor = oldColor;
+	}
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getThrottle(CScript* script) {
+	script->Collect(1);
+	int joypad = Params[0].nVar;
+	Params[0].nVar = CPad::GetPad(joypad)->GetAccelerate();
+	Params[1].nVar = CPad::GetPad(joypad)->GetBrake();
+	script->Store(2);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall getHandBrake(CScript* script) {
+	script->Collect(1);
+	int joypad = Params[0].nVar;
+	Params[0].nVar = CPad::GetPad(joypad)->GetHandBrake();
+	script->Store(1);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isDoingBurnout(CScript* script) {
+	script->Collect(1);
+	CVehicle* vehicle = CPools::GetVehicle(Params[0].nVar);
+	CAutomobile* automobile;
+	if (vehicle) {
+		automobile = reinterpret_cast<CAutomobile*>(vehicle);
+		script->UpdateCompareFlag(automobile->__p04FE[2] == 1);
+		return OR_CONTINUE;
+	}
+	return OR_CONTINUE;
+}

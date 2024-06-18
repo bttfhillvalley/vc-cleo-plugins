@@ -134,7 +134,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F60, createParticle);
 		Opcodes::RegisterOpcode(0x3F61, wheelSparks);
 		Opcodes::RegisterOpcode(0x3F62, createCarComponent);
+		Opcodes::RegisterOpcode(0x3F63, dmgDrawCarCollidingParticles);
 		Opcodes::RegisterOpcode(0x3F64, carComponentDigitGet);
+		Opcodes::RegisterOpcode(0x3F65, createKnockback);
+		Opcodes::RegisterOpcode(0x3F66, getThrottle);
+		Opcodes::RegisterOpcode(0x3F67, getHandBrake);
+		Opcodes::RegisterOpcode(0x3F68, isDoingBurnout);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);

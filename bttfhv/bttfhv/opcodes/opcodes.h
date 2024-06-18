@@ -98,6 +98,7 @@ eOpcodeResult __stdcall getForwardVelocityVectorWithSpeed(CScript* script);
 eOpcodeResult __stdcall getRelativeVelocity(CScript* script);
 eOpcodeResult __stdcall setGasPedal(CScript* script);
 eOpcodeResult __stdcall setBrakePedal(CScript* script);
+eOpcodeResult __stdcall getHandBrake(CScript* script);
 eOpcodeResult __stdcall setHandBrake(CScript* script);
 eOpcodeResult __stdcall setSteeringAngle(CScript* script);
 eOpcodeResult __stdcall getSteeringAngle(CScript* script);
@@ -108,6 +109,9 @@ eOpcodeResult __stdcall attachVehicle(CScript* script);
 eOpcodeResult __stdcall detachVehicle(CScript* script);
 eOpcodeResult __stdcall setDoorStatus(CScript* script);
 eOpcodeResult __stdcall createCarComponent(CScript* script);
+eOpcodeResult __stdcall dmgDrawCarCollidingParticles(CScript* script);
+eOpcodeResult __stdcall getThrottle(CScript* script);
+eOpcodeResult __stdcall isDoingBurnout(CScript* script);
 
 // Texture
 eOpcodeResult __stdcall replaceTex(CScript* script);
@@ -122,6 +126,7 @@ eOpcodeResult __stdcall setBuildingComponentVisibility(CScript* script);
 
 // Animation
 eOpcodeResult __stdcall playCharAnim(CScript* script);
+eOpcodeResult __stdcall createKnockback(CScript* script);
 
 // Sound
 eOpcodeResult __stdcall stopAllSounds(CScript* script);

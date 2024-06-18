@@ -41,10 +41,6 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 	if (!CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE)) {
 		fPedalState = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
 		bBoostState = CPad::GetPad(0)->GetHandBrake();
-		if (CPad::GetPad(0)->GetAccelerate() && CPad::GetPad(0)->GetBrake()) {
-			fPedalState = 1.0f;
-			bBoostState = true;
-		}
 		if (fForwardSpeed > 0.0f || fPedalState > 0.0f) {
 			fThrustAccel = (fPedalState - fThrustFallOff * fForwardSpeed) * fThrust;
 		}
