@@ -201,22 +201,30 @@ const vector<string> DRIVETRAIN_HOVER_COMPONENTS = {
 	"strutrb",
 	"holderrb",
 	"shockpistonrb",
-	"shocklb",
+	"shockrb",
+	"strutshockrb",
+	"hoverjointrb",
 
 	"strutlb",
 	"holderlb",
 	"shockpistonlb",
 	"shocklb",
+	"strutshocklb",
+	"hoverjointlb",
 
 	"strutrf",
 	"holderrf",
 	"shockpistonrf",
 	"shockrf",
+	"strutshockrf",
+	"hoverjointrf",
 
 	"strutlf",
 	"holderlf",
 	"shockpistonlf",
 	"shocklf",
+	"strutshocklf",
+	"hoverjointlf",
 };
 
 const vector<string> WHEEL_STOCK_COMPONENTS = {
