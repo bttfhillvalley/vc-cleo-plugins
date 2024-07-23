@@ -1,6 +1,7 @@
 #include "../constants.h"
 #include "../vehicle/components.h"
 #include "delorean.h"
+#include <iostream>
 #define HOVER_WHEELS 0xAA
 
 const map<int, tuple<float, float>> GEAR_RATIOS = {
@@ -15,34 +16,36 @@ const map<int, tuple<float, float>> GEAR_RATIOS = {
 
 void Delorean::SetupShifter() {
 	for (const auto& it : SHIFTER_VALUES) {
-		setVisibility(timeMachine, it.second, 0);
+		setVisibility(automobile, it.second, 0);
 	}
 }
 
 void Delorean::ProcessShifter() {
-	int wheelStatus = getWheelStatusAll(timeMachine);
+	int wheelStatus = getWheelStatusAll(automobile);
 	int gear = -1;
 	float target;
 	if (GetSpeed() > 1.0f && wheelStatus != HOVER_WHEELS)
 	{
-		gear = timeMachine->m_nCurrentGear;
+		gear = automobile->m_nCurrentGear;
 	}
 	string component = SHIFTER_VALUES.at(gear);
-	if (!getVisibility(timeMachine, component)) {
+	if (!getVisibility(automobile, component)) {
 		SetupShifter();
-		setVisibility(timeMachine, component, 1);
+		setVisibility(automobile, component, 1);
 	}
 
 	// Animate RPM Needle
 	if (wheelStatus != HOVER_WHEELS) {
 		auto ratio = GEAR_RATIOS.at(gear);
-		auto wheelSpeed = max(timeMachine->fWheelSpeed[CARWHEEL_REAR_RIGHT], timeMachine->fWheelSpeed[CARWHEEL_REAR_RIGHT]);
+		auto wheelSpeed = max(automobile->fWheelSpeed[CARWHEEL_REAR_RIGHT], automobile->fWheelSpeed[CARWHEEL_REAR_RIGHT]);
 		target = clamp(11.85f * abs(wheelSpeed) * get<0>(ratio) + get<1>(ratio), 5.0f, 360.0f);
 	}
 	else {
-		target = 25.0f;
+		auto ratio = GEAR_RATIOS.at(SHIFTER_5);
+		target = GetSpeed();
+		target = clamp(GetSpeed() * get<0>(ratio) + get<1>(ratio), 18.285f, 360.0f);
 	}
 	float delta = clamp(target - rpmNeedle, -5.0f, 5.0f);
 	rpmNeedle += delta;
-	rotateComponent(timeMachine, "rpmneedle", 0.0f, rpmNeedle, 0.0f);
+	rotateComponent(automobile, "rpmneedle", 0.0f, rpmNeedle, 0.0f);
 }

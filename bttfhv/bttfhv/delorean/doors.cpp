@@ -18,18 +18,23 @@
 #define HOVER_BONNET_STRUT CVector(-0.712656f, 1.50014f, 0.080155f)
 
 void Delorean::ProcessDoor() {
+	// Doors
+	// not sure why this is reversed
+	rotateComponent(automobile, "fxdoorlf_", -getComponentRotation(automobile, "door_lf_dummy"));
+	rotateComponent(automobile, "fxdoorrf_", -getComponentRotation(automobile, "door_rf_dummy"));
+
 	// Door Struts
-	float leftDoorAngle = abs(timeMachine->m_aDoors[DOOR_FRONT_LEFT].fAngle);
+	float leftDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_LEFT].fAngle);
 	float leftPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(leftDoorAngle)));
 	float leftStrutAngle = 86.6f - degrees(asinf(sinf(leftDoorAngle) * DOOR_PIVOT / leftPiston));
-	float rightDoorAngle = abs(timeMachine->m_aDoors[DOOR_FRONT_RIGHT].fAngle);
+	float rightDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_RIGHT].fAngle);
 	float rightPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(rightDoorAngle)));
 	float rightStrutAngle = -(86.6f - degrees(asinf(sinf(rightDoorAngle) * DOOR_PIVOT / rightPiston)));
 
-	rotateComponent(timeMachine, "doorlfstrut_", 0.0f, leftStrutAngle, 0.0f);
-	rotateComponent(timeMachine, "doorrfstrut_", 0.0f, rightStrutAngle, 0.0f);
-	moveComponent(timeMachine, "doorlfstrutp", 0.0f, 0.0f, leftPiston - 0.259f);
-	moveComponent(timeMachine, "doorrfstrutp", 0.0f, 0.0f, rightPiston - 0.259f);
+	rotateComponent(automobile, "doorlfstrut_", 0.0f, leftStrutAngle, 0.0f);
+	rotateComponent(automobile, "doorrfstrut_", 0.0f, rightStrutAngle, 0.0f);
+	moveComponent(automobile, "doorlfstrutp", 0.0f, 0.0f, leftPiston - 0.259f);
+	moveComponent(automobile, "doorrfstrutp", 0.0f, 0.0f, rightPiston - 0.259f);
 
 	// Door Sound
 	/*if (IsTimeMachine()) {
@@ -40,9 +45,10 @@ void Delorean::ProcessDoor() {
 }
 
 void Delorean::ProcessBonnet() {
-	float hoodAngle = -timeMachine->m_aDoors[BONNET].fAngle + BONNET_ANGLE_OFFSET;
+	rotateComponent(automobile, "fxbonnet_", getComponentRotation(automobile, "bonnet_dummy"));
+	float hoodAngle = -automobile->m_aDoors[BONNET].fAngle + BONNET_ANGLE_OFFSET;
 	CVector attachment;
-	if (getVisibility(timeMachine, "bonnetanchorl")) {
+	if (getVisibility(automobile, "bonnetanchorl")) {
 		attachment = STOCK_BONNET_STRUT;
 	}
 	else {
@@ -65,18 +71,18 @@ void Delorean::ProcessBonnet() {
 		degrees(-atanf(deltaAngle.x / deltaAngle.y))
 	);
 	float strutLength = deltaAngle.Magnitude() - STRUT_LENGTH_OFFSET;
-	moveComponent(timeMachine, "bonnetlstrut_", attachment.x, attachment.y, attachment.z);
-	moveComponent(timeMachine, "bonnetrstrut_", -attachment.x, attachment.y, attachment.z);
-	rotateComponent(timeMachine, "bonnetlstrut_", strutAngle.x, strutAngle.y, strutAngle.z);
-	rotateComponent(timeMachine, "bonnetrstrut_", strutAngle.x, strutAngle.y, -strutAngle.z);
-	moveComponent(timeMachine, "bonnetlstrutp_", 0.0f, 0.0f, strutLength);
-	moveComponent(timeMachine, "bonnetrstrutp_", 0.0f, 0.0f, strutLength);
+	moveComponent(automobile, "bonnetlstrut_", attachment.x, attachment.y, attachment.z);
+	moveComponent(automobile, "bonnetrstrut_", -attachment.x, attachment.y, attachment.z);
+	rotateComponent(automobile, "bonnetlstrut_", strutAngle.x, strutAngle.y, strutAngle.z);
+	rotateComponent(automobile, "bonnetrstrut_", strutAngle.x, strutAngle.y, -strutAngle.z);
+	moveComponent(automobile, "bonnetlstrutp_", 0.0f, 0.0f, strutLength);
+	moveComponent(automobile, "bonnetrstrutp_", 0.0f, 0.0f, strutLength);
 }
 
 void Delorean::HandleBonnet() {
-	if (timeMachine->IsDoorMissing(CAR_BONNET)) {
-		if (!timeMachine->IsDoorClosed(BONNET)) {
-			timeMachine->OpenDoor(CAR_BONNET, BONNET, 0.0f);
+	if (automobile->IsDoorMissing(CAR_BONNET)) {
+		if (!automobile->IsDoorClosed(BONNET)) {
+			automobile->OpenDoor(CAR_BONNET, BONNET, 0.0f);
 			bonnetState = BONNET_CLOSED;
 		}
 		return;
@@ -85,9 +91,9 @@ void Delorean::HandleBonnet() {
 	if (playerInfo->m_nPlayerState != PLAYERSTATE_PLAYING) {
 		return;
 	}
-	CVector front = getOffsetFromCar(timeMachine, CVector(0.0f, 3.25f, 0.0f));
-	CVector left = getOffsetFromCar(timeMachine, CVector(-1.5f, 1.5f, 0.0f));
-	CVector right = getOffsetFromCar(timeMachine, CVector(1.5f, 1.5f, 0.0f));
+	CVector front = getOffsetFromCar(automobile, CVector(0.0f, 3.25f, 0.0f));
+	CVector left = getOffsetFromCar(automobile, CVector(-1.5f, 1.5f, 0.0f));
+	CVector right = getOffsetFromCar(automobile, CVector(1.5f, 1.5f, 0.0f));
 	if (CPad::GetPad(0)->NewState.LeftShoulder1 != 0
 		&& (isPlayerInSphere(front, CVector(0.75f, 0.75f, 2.0f))
 		|| isPlayerInSphere(left, CVector(0.75f, 0.75f, 2.0f))
@@ -107,7 +113,7 @@ void Delorean::HandleBonnet() {
 	CVector relativeVelocity;
 	switch (bonnetState) {
 	case BONNET_OPEN:
-		relativeVelocity = Multiply3x3(timeMachine->m_vecMoveSpeed, timeMachine->m_placement);
+		relativeVelocity = Multiply3x3(automobile->m_vecMoveSpeed, automobile->m_placement);
 		if (relativeVelocity.y * GAME_SPEED_TO_METERS_PER_SECOND > 30.0f) {
 			GetSpeed();
 			bonnetState = BONNET_CLOSING;
@@ -116,15 +122,15 @@ void Delorean::HandleBonnet() {
 	case BONNET_CLOSED:
 		break;
 	case BONNET_OPENING:
-		doorAngle = Clamp(timeMachine->m_aDoors[BONNET].GetAngleOpenRatio() + 0.05f, 0.0f, 1.0f);
-		timeMachine->OpenDoor(CAR_BONNET, BONNET, doorAngle);
+		doorAngle = Clamp(automobile->m_aDoors[BONNET].GetAngleOpenRatio() + 0.05f, 0.0f, 1.0f);
+		automobile->OpenDoor(CAR_BONNET, BONNET, doorAngle);
 		if (doorAngle >= 1.0f) {
 			bonnetState = BONNET_OPEN;
 		}
 		break;
 	case BONNET_CLOSING:
-		doorAngle = Clamp(timeMachine->m_aDoors[BONNET].GetAngleOpenRatio() - 0.05f, 0.0f, 1.0f);
-		timeMachine->OpenDoor(CAR_BONNET, BONNET, doorAngle);
+		doorAngle = Clamp(automobile->m_aDoors[BONNET].GetAngleOpenRatio() - 0.05f, 0.0f, 1.0f);
+		automobile->OpenDoor(CAR_BONNET, BONNET, doorAngle);
 		if (doorAngle <= 0.0f) {
 			bonnetState = BONNET_CLOSED;
 		}
@@ -133,10 +139,11 @@ void Delorean::HandleBonnet() {
 }
 
 void Delorean::HandleBoot() {
-	if (timeMachine->IsDoorMissing(CAR_BOOT) || IsTimeMachine()) {
-		if (!timeMachine->IsDoorClosed(BOOT)) {
-			timeMachine->OpenDoor(CAR_BOOT, BOOT, 0.0f);
-			rotateComponent(timeMachine, "enginecover", CVector(0.0f, 0.0f, 0.0f));
+	rotateComponent(automobile, "fxboot_", getComponentRotation(automobile, "boot_dummy"));
+	if (automobile->IsDoorMissing(CAR_BOOT) || IsTimeMachine()) {
+		if (!automobile->IsDoorClosed(BOOT)) {
+			automobile->OpenDoor(CAR_BOOT, BOOT, 0.0f);
+			rotateComponent(automobile, "enginecover", CVector(0.0f, 0.0f, 0.0f));
 			bootState = BOOT_CLOSED;
 		}
 		return;
@@ -145,7 +152,7 @@ void Delorean::HandleBoot() {
 	if (playerInfo->m_nPlayerState != PLAYERSTATE_PLAYING) {
 		return;
 	}
-	CVector pos = getOffsetFromCar(timeMachine, CVector(0.0f, -3.25f, 0.0f));
+	CVector pos = getOffsetFromCar(automobile, CVector(0.0f, -3.25f, 0.0f));
 	if (CPad::GetPad(0)->NewState.LeftShoulder1 != 0 && isPlayerInSphere(pos, CVector(0.75f, 0.75f, 2.0f))) {
 		switch (bootState) {
 		case BOOT_OPENING:
@@ -166,29 +173,29 @@ void Delorean::HandleBoot() {
 	case BOOT_CLOSED:
 		break;
 	case BOOT_OPENING:
-		doorAngle = Clamp(timeMachine->m_aDoors[BOOT].GetAngleOpenRatio() + 0.05f, 0.0f, 1.0f);
-		timeMachine->OpenDoor(CAR_BOOT, BOOT, doorAngle);
+		doorAngle = Clamp(automobile->m_aDoors[BOOT].GetAngleOpenRatio() + 0.05f, 0.0f, 1.0f);
+		automobile->OpenDoor(CAR_BOOT, BOOT, doorAngle);
 		if (doorAngle >= 1.0f) {
-			coverAngle = getComponentRotation(timeMachine, "enginecover");
+			coverAngle = getComponentRotation(automobile, "enginecover");
 			coverAngle.x = Clamp(coverAngle.x - 3.0f, -54.0f, 0.0f);
-			rotateComponent(timeMachine, "enginecover", coverAngle);
+			rotateComponent(automobile, "enginecover", coverAngle);
 			if (coverAngle.x <= -54.0f) {
 				bootState = BOOT_OPEN;
 			}
 		}
 		break;
 	case BOOT_CLOSING:
-		doorAngle = timeMachine->m_aDoors[BOOT].GetAngleOpenRatio();
+		doorAngle = automobile->m_aDoors[BOOT].GetAngleOpenRatio();
 		if (doorAngle <= 0.0f) {
 			bootState = BOOT_CLOSED;
 		}
 		else {
-			coverAngle = getComponentRotation(timeMachine, "enginecover");
+			coverAngle = getComponentRotation(automobile, "enginecover");
 			coverAngle.x = Clamp(coverAngle.x + 3.0f, -54.0f, 0.0f);
-			rotateComponent(timeMachine, "enginecover", coverAngle);
+			rotateComponent(automobile, "enginecover", coverAngle);
 			if (coverAngle.x >= 0.0f) {
 				doorAngle = Clamp(doorAngle - 0.05f, 0.0f, 1.0f);
-				timeMachine->OpenDoor(CAR_BOOT, BOOT, doorAngle);
+				automobile->OpenDoor(CAR_BOOT, BOOT, doorAngle);
 			}
 		}
 		break;

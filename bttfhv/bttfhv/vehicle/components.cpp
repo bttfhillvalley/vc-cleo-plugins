@@ -56,6 +56,20 @@ void moveComponent(CEntity* model, string component, float x, float y, float z) 
 	}
 }
 
+CVector getComponentPosition(CEntity* model, string component) {
+	CVector position;
+	if (model) {
+		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
+		if (frame) {
+			CMatrix cmatrix(&frame->modelling, false);
+			position.x = cmatrix.pos.x;
+			position.y = cmatrix.pos.y;
+			position.z = cmatrix.pos.z;
+		}
+	}
+	return position;
+}
+
 void rotateComponent(CEntity* model, string component, float rx, float ry, float rz) {
 	if (model) {
 		RwFrame* frame = CClumpModelInfo::GetFrameFromName(model->m_pRwClump, component.c_str());
@@ -287,6 +301,6 @@ CObject* createCarComponent(CVehicle* vehicle, string component) {
 			obj->m_fAirResistance = 0.99f;
 			CWorld::Add(obj);
 		}
-		return obj;
 	}
+	return obj;
 }

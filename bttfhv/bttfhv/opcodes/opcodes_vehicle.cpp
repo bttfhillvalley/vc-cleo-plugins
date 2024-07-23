@@ -13,21 +13,9 @@
 #include "../vehicle/components.h"
 #include "../vehicle/handling.h"
 #include "../vehicle/hover.h"
+#include <iostream>
 
 #include "opcodes.h"
-
-bool isPlayerInCar(CVehicle* vehicle) {
-	CPlayerInfo player = CWorld::Players[CWorld::PlayerInFocus];
-	if (player.IsPlayerInRemoteMode()) {
-		return vehicle->m_nState == STATUS_PLAYER_REMOTE;
-	}
-	return player.m_pPed->m_bInVehicle && player.m_pPed->m_pVehicle == vehicle;
-}
-
-bool isPlayerInModel(int model) {
-	CPlayerInfo player = CWorld::Players[CWorld::PlayerInFocus];
-	return player.m_pPed->m_bInVehicle && player.m_pPed->m_pVehicle->m_nModelIndex == model;
-}
 
 eOpcodeResult __stdcall raiseFrontSuspension(CScript* script)
 {

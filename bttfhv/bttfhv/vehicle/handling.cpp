@@ -1,6 +1,8 @@
 #define _USE_MATH_DEFINES
 #include "CModelInfo.h"
 #include "CDamageManager.h"
+#include "CWorld.h"
+#include "eEntityStatus.h"
 
 #include "../configuration/fileloader.h"
 #include "../constants.h"
@@ -23,6 +25,19 @@ map<int, int> handlingOverride = {
 	{238, AIRTRAIN_ID},
 	{239, AIRTRAIN_ID}
 };
+
+bool isPlayerInCar(CVehicle* vehicle) {
+	CPlayerInfo player = CWorld::Players[CWorld::PlayerInFocus];
+	if (player.IsPlayerInRemoteMode()) {
+		return vehicle->m_nState == STATUS_PLAYER_REMOTE;
+	}
+	return player.m_pPed->m_bInVehicle && player.m_pPed->m_pVehicle == vehicle;
+}
+
+bool isPlayerInModel(int model) {
+	CPlayerInfo player = CWorld::Players[CWorld::PlayerInFocus];
+	return player.m_pPed->m_bInVehicle && player.m_pPed->m_pVehicle->m_nModelIndex == model;
+}
 
 void DoorInit(CDoor* door, float minAngle, float maxAngle, uint8_t dir, uint8_t axis) {
 	door->fAngleInPosTwo = minAngle;
@@ -49,6 +64,7 @@ void UpdateHandling(CVehicle *vehicle) {
 	CVehicleModelInfo* modelInfo = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehicle->m_nModelIndex));
 
 	string name(modelInfo->m_szName);
+	cout << name << endl;
 	if (!name.empty()) {
 		if (handlingData.contains(name)) {
 			auto handlingId = handlingOverride.find(vehicle->m_nModelIndex);
@@ -86,5 +102,13 @@ void UpdateFlyingHandling(CVehicle* vehicle) {
 		if (vehicle->m_pFlyingHandling == &gHandlingDataMgr.m_aFlyingHandling[0] && flyingHandlingData.contains(name)) {
 			vehicle->m_pFlyingHandling = flyingHandlingData[name];
 		}
+	}
+}
+
+void UpdateFlyingHandling(CVehicle* vehicle, string name) {
+	CVehicleModelInfo* modelInfo = reinterpret_cast<CVehicleModelInfo*>(CModelInfo::GetModelInfo(vehicle->m_nModelIndex));
+
+	if (vehicle->m_pFlyingHandling == &gHandlingDataMgr.m_aFlyingHandling[0] && flyingHandlingData.contains(name)) {
+		vehicle->m_pFlyingHandling = flyingHandlingData[name];
 	}
 }

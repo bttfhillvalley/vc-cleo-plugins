@@ -2,6 +2,7 @@
 #include "CVehicleModelInfo.h"
 #include "CWorld.h"
 #include "../constants.h"
+#include "../rw/utils.h"
 #include "../utils/math.h"
 #include "../sound/sound.h"
 #include "../vehicle/components.h"
@@ -13,7 +14,7 @@
 map<CVehicle*, Delorean*> deloreanMap;
 
 Delorean::Delorean(CVehicle* vehicle) {
-	timeMachine = reinterpret_cast<CAutomobile*>(vehicle);
+	automobile = reinterpret_cast<CAutomobile*>(vehicle);
 	Setup();
 	ShowStock();
 }
@@ -38,10 +39,12 @@ void Delorean::ShowStock() {
 	HideComponents(FROSTED_COMPONENTS);
 
 	// HACK: This allows CLEO to hook into the model by showing both underbody models
-	setVisibility(timeMachine, "underbodybttf2", 1);
+	setVisibility(automobile, "underbodybttf2", 1);
 }
 
 void Delorean::Setup() {
+	int i;
+	for (i = 0; i < 6; i++) doorStatus[i] = 0;
 	SetupGlow();
 	SetupSid();
 	SetupPlutoniumBox();
@@ -49,45 +52,45 @@ void Delorean::Setup() {
 	SetupSpeedo();
 	SetupTimeCircuits();
 	SetupWormhole();
-	UpdateHandling(timeMachine);
+	UpdateHandling(automobile);
 }
 
 void Delorean::SetupGlow() {
 	for (const auto& component : GLOWING_COMPONENTS) {
-		setGlow(timeMachine, component, 1);
+		setGlow(automobile, component, 1);
 	}
 
 	for (const auto& component : GLOWING_HIDDEN_COMPONENTS) {
-		setGlow(timeMachine, component, 1);
-		setVisibility(timeMachine, component, 0);
+		setGlow(automobile, component, 1);
+		setVisibility(automobile, component, 0);
 	}
 }
 
 void Delorean::SetupPlutoniumBox() {
 	for (int index = 1; index <= 12; index++) {
-		setVisibility(timeMachine, getComponentIndex("plutcan", index), 0);
-		setVisibility(timeMachine, getComponentIndex("plutcanliquid", index), 0);
-		setVisibility(timeMachine, getComponentIndex("plutcaninterior", index), 0);
-		setVisibility(timeMachine, getComponentIndex("plut", index), 0);
+		setVisibility(automobile, getComponentIndex("plutcan", index), 0);
+		setVisibility(automobile, getComponentIndex("plutcanliquid", index), 0);
+		setVisibility(automobile, getComponentIndex("plutcaninterior", index), 0);
+		setVisibility(automobile, getComponentIndex("plut", index), 0);
 	}
 }
 
 void Delorean::SetupSpeedo() {
 	for (int index = 10; index <= 29; index++) {
-		SetGlowAndHideIndex(timeMachine, "digitalspeedodigit", index);
+		SetGlowAndHideIndex(automobile, "digitalspeedodigit", index);
 	}
 }
 
 void Delorean::SetupWormhole() {
 	for (int index = 1; index <= 70; index++) {
-		SetGlowAndHideIndex(timeMachine, "wormhole", index);
-		SetGlowAndHideIndex(timeMachine, "wormholer", index);
+		SetGlowAndHideIndex(automobile, "wormhole", index);
+		SetGlowAndHideIndex(automobile, "wormholer", index);
 	}
 }
 
 void Delorean::SetComponentVisibility(const vector<string>& components, int visible, string prefix = "") {
 	for (string name : components) {
-		setVisibility(timeMachine, (prefix + name).c_str(), visible);
+		setVisibility(automobile, (prefix + name).c_str(), visible);
 	}
 }
 
@@ -118,7 +121,7 @@ void Delorean::HideAllOptions(const map<int, vector<string>>& options) {
 }
 
 bool Delorean::IsTimeMachine() {
-	return getVisibility(timeMachine, "bttf1") || getVisibility(timeMachine, "bttf2");
+	return getVisibility(automobile, "bttf1") || getVisibility(automobile, "bttf2");
 }
 
 void Delorean::Update() {
@@ -127,4 +130,5 @@ void Delorean::Update() {
 	ProcessDoor();
 	ProcessBonnet();
 	ProcessShifter();
+	ProcessDamage();
 }

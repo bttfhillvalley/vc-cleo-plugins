@@ -9,38 +9,38 @@ void Delorean::SetupTimeCircuits() {
 	// Months
 	for (index = 1; index <= 12; index++) {
 
-		SetGlowAndHideIndex(timeMachine, "dtmonth", index);
-		SetGlowAndHideIndex(timeMachine, "ptmonth", index);
-		SetGlowAndHideIndex(timeMachine, "ltdmonth", index);
+		SetGlowAndHideIndex(automobile, "dtmonth", index);
+		SetGlowAndHideIndex(automobile, "ptmonth", index);
+		SetGlowAndHideIndex(automobile, "ltdmonth", index);
 	}
 
 	// Days
 	for (index = 10; index <= 29; index++) {
-		SetGlowAndHideIndex(timeMachine, "dtday", index);
-		SetGlowAndHideIndex(timeMachine, "ptday", index);
-		SetGlowAndHideIndex(timeMachine, "ltdday", index);
+		SetGlowAndHideIndex(automobile, "dtday", index);
+		SetGlowAndHideIndex(automobile, "ptday", index);
+		SetGlowAndHideIndex(automobile, "ltdday", index);
 	}
 
 	// Years
 	for (index = 10; index <= 49; index++) {
-		SetGlowAndHideIndex(timeMachine, "dtyear", index);
-		SetGlowAndHideIndex(timeMachine, "ptyear", index);
-		SetGlowAndHideIndex(timeMachine, "ltdyear", index);
+		SetGlowAndHideIndex(automobile, "dtyear", index);
+		SetGlowAndHideIndex(automobile, "ptyear", index);
+		SetGlowAndHideIndex(automobile, "ltdyear", index);
 	}
 
 	// Hours
 	for (index = 10; index <= 29; index++) {
-		SetGlowAndHideIndex(timeMachine, "dthour", index);
-		SetGlowAndHideIndex(timeMachine, "pthour", index);
-		SetGlowAndHideIndex(timeMachine, "ltdhour", index);
-		SetGlowAndHideIndex(timeMachine, "consoleclockdigithour", index);
+		SetGlowAndHideIndex(automobile, "dthour", index);
+		SetGlowAndHideIndex(automobile, "pthour", index);
+		SetGlowAndHideIndex(automobile, "ltdhour", index);
+		SetGlowAndHideIndex(automobile, "consoleclockdigithour", index);
 	}
 
 	// Minutes
 	for (index = 10; index <= 29; index++) {
-		SetGlowAndHideIndex(timeMachine, "dtmin", index);
-		SetGlowAndHideIndex(timeMachine, "ptmin", index);
-		SetGlowAndHideIndex(timeMachine, "ltdmin", index);
-		SetGlowAndHideIndex(timeMachine, "consoleclockdigitmin", index);
+		SetGlowAndHideIndex(automobile, "dtmin", index);
+		SetGlowAndHideIndex(automobile, "ptmin", index);
+		SetGlowAndHideIndex(automobile, "ltdmin", index);
+		SetGlowAndHideIndex(automobile, "consoleclockdigitmin", index);
 	}
 }

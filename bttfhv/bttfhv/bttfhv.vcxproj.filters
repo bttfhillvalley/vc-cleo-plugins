@@ -73,6 +73,18 @@
     <ClCompile Include="configuration\config.cpp">
       <Filter>configuration</Filter>
     </ClCompile>
+    <ClCompile Include="luxor\luxor.cpp">
+      <Filter>luxor</Filter>
+    </ClCompile>
+    <ClCompile Include="delorean\damage.cpp">
+      <Filter>delorean</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\text.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="opcodes\opcodes_text.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />
@@ -120,6 +132,12 @@
     <ClInclude Include="configuration\config.h">
       <Filter>configuration</Filter>
     </ClInclude>
+    <ClInclude Include="luxor\luxor.h">
+      <Filter>luxor</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\text.h">
+      <Filter>utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="opcodes">
@@ -148,6 +166,9 @@
     </Filter>
     <Filter Include="time">
       <UniqueIdentifier>{e3aae283-e1a2-4079-a0c2-cb15292878c1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="luxor">
+      <UniqueIdentifier>{066b4dd8-072e-4ff8-9e77-19830e9682ee}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

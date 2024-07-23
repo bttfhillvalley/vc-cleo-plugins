@@ -16,12 +16,14 @@
 #include "rw\utils.h"
 #include "sound\sound.h"
 #include "utils\math.h"
+#include "utils\text.h"
 #include "vehicle\attachment.h"
 #include "vehicle\components.h"
 #include "vehicle\handling.h"
 #include "vehicle\hover.h"
 
 #include "delorean\delorean.h"
+#include "luxor\luxor.h"
 
 tScriptVar* Params;
 
@@ -140,6 +142,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F66, getThrottle);
 		Opcodes::RegisterOpcode(0x3F67, getHandBrake);
 		Opcodes::RegisterOpcode(0x3F68, isDoingBurnout);
+		Opcodes::RegisterOpcode(0x3F70, textBox);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
@@ -181,7 +184,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		patch::Nop(0x593F83, 10, true);
 		patch::Nop(0x593F90, 10, true);
 		patch::Nop(0x593FAA, 10, true);
-
+/*
 		// These next ones disables the collapsing of frames on particular dummies
 		patch::SetInt(0x699730, 0x80, true); // Front Bumper
 		patch::SetInt(0x69973c, 0x00, true); // Bonnet
@@ -198,7 +201,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		patch::SetInt(0x6997c0, 0xc80, true); // Windscreen
 		//patch::SetInt(0x00579D3F size 5 value 0x90, true);
 		//patch::SetInt(0x00579D4C size 5 value 0x90, true);
-
+*/
 		// Delorean slot (237)
 		patch::SetInt(0x6ADD54, 274, true);   // Acceleration Sample (SFX_CAR_REV_7)
 		patch::SetInt(0x6ADD58, 10, true);    // Engine Bank (COBRA)
@@ -235,22 +238,48 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
 			// Delorean stuff
 			Delorean* delorean;
-			auto it = deloreanMap.find(vehicle);
-			if (it == deloreanMap.end()) {
-				if (vehicle->m_nState != STATUS_WRECKED  && (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2"))) {
-					delorean = new Delorean(vehicle);
-					delorean->Update();
-					deloreanMap[vehicle] = delorean;
+			
+			auto deloreanIterator = deloreanMap.find(vehicle);
+			if (deloreanIterator == deloreanMap.end()) {
+				if (vehicle->m_nState != STATUS_WRECKED) {
+					if (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2")) {
+						delorean = new Delorean(vehicle);
+						delorean->Update();
+						deloreanMap[vehicle] = delorean;
+					}
 				}
 			}
 			else {
-				delorean = it->second;
+				delorean = deloreanIterator->second;
 				if (delorean->IsWrecked()) {
 					delete delorean;
 					deloreanMap.erase(vehicle);
 				}
 				else {
 					delorean->Update();
+				}
+			}
+			
+			// Luxor stuff
+			Luxor* luxor;
+			auto luxorIterator = luxorMap.find(vehicle);
+			if (luxorIterator == luxorMap.end()) {
+				if (vehicle->m_nState != STATUS_WRECKED) {
+					if (getVisibility(vehicle, "carroceria")) {
+						luxor = new Luxor(vehicle);
+						luxor->Update();
+						luxorMap[vehicle] = luxor;
+					}
+				}
+			}
+			else {
+				luxor = luxorIterator->second;
+				if (luxor->IsWrecked()) {
+					delete luxor;
+					luxorMap.erase(vehicle);
+				}
+				else {
+					luxor->Update();
 				}
 			}
 
@@ -282,6 +311,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			boatHandlingData.clear();
 			flyingHandlingData.clear();
 			deloreanMap.clear();
+			luxorMap.clear();
 			carAttachments.clear();
 			ideMap.clear();
 			removeObjectQueue.clear();
@@ -291,6 +321,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			LoadKeyConfig();
 			LoadAdditionalHandlingData();
 			LoadAdditionalVehicleColours();
+			LoadTextFiles();
 
 			int millis = 60000;
 			auto it = configKeys.find("TIME_SCALE");

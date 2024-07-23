@@ -147,3 +147,6 @@ eOpcodeResult __stdcall setVolume(CScript* script);
 eOpcodeResult __stdcall attachSoundToVehicleIndex(CScript* script);
 eOpcodeResult __stdcall setDoppler(CScript* script);
 eOpcodeResult __stdcall setReverb(CScript* script);
+
+// Text
+eOpcodeResult __stdcall textBox(CScript* script);

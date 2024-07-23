@@ -1,3 +1,5 @@
+#include <vector>
+
 #include "utils.h"
 
 int& ms_atomicPluginOffset = *(int*)0x69A1C8;
@@ -64,4 +66,13 @@ RwObject* __cdecl GetAtomicObjectCB(RwObject* object, void* data)
 {
 	*(RpAtomic**)data = (RpAtomic*)object;
 	return object;
+}
+
+RwFrame* ListFramesCB(RwFrame* frame, void* data) {
+	auto searchData = reinterpret_cast<vector<RwFrame*>*>(data);
+	if (frame) {
+		searchData->push_back(frame);
+	}
+	RwFrameForAllChildren(frame, ListFramesCB, searchData);
+	return frame;
 }

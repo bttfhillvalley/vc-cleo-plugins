@@ -1,5 +1,6 @@
 #pragma once
 #include "plugin.h"
+using namespace std;
 
 int GetAtomicId(RpAtomic* atomic);
 RpMaterial* SetAmbientCB(RpMaterial* material, void* data);
@@ -9,3 +10,4 @@ RpMaterial* SetBlueCB(RpMaterial* material, void* data);
 RwObject* SetAtomicVisibilityCB(RwObject* rwObject, void* data);
 RwObject* GetAtomicVisibilityCB(RwObject* rwObject, void* data);
 RwObject* GetAtomicObjectCB(RwObject* object, void* data);
+RwFrame* ListFramesCB(RwFrame* frame, void* data);

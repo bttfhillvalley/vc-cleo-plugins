@@ -27,20 +27,25 @@ enum BOOT_STATE {
 
 class Delorean
 {
+private:
+	void processDoorDamage(eDoors door, string component);
+	void processPanelDamage(ePanels panel, string component);
 public:
 	int vehicleHandle;
 
-	CAutomobile* timeMachine;
+	CAutomobile* automobile;
 	unsigned char leftDoor;
 	unsigned char rightDoor;
 	unsigned char bonnetState;
 	unsigned char bootState;
 	float rpmNeedle = 0.0f;
+	unsigned int doorStatus[6];
+	unsigned int panelStatus[7];
 
 	Delorean(CVehicle* vehicle);
 
-	bool IsWrecked() { return timeMachine->m_nState == STATUS_WRECKED; }
-	float GetSpeed() { return timeMachine->GetSpeed().Magnitude() * GAME_SPEED_TO_METERS_PER_SECOND; }
+	bool IsWrecked() { return automobile->m_nState == STATUS_WRECKED; }
+	float GetSpeed() { return automobile->GetSpeed().Magnitude() * GAME_SPEED_TO_METERS_PER_SECOND; }
 	void Setup();
 	void SetupGlow();
 	void SetupPlutoniumBox();
@@ -63,7 +68,8 @@ public:
 	void ProcessDoor();
 	void ProcessBonnet();
 	void ProcessShifter();
-
+	void ProcessDamage();
+	CObject* SpawnFlyingComponent(string component, unsigned int type);
 
 	void Update();
 };

@@ -7,6 +7,7 @@ void setVisibility(CEntity* model, string component, int visible);
 int getVisibility(CEntity* model, string component);
 void moveComponent(CEntity* model, string component, float x, float y, float z);
 inline void moveComponent(CEntity* model, string component, CVector v) { moveComponent(model, component, v.x, v.y, v.z); }
+CVector getComponentPosition(CEntity* model, string component);
 void rotateComponent(CEntity* model, string component, float rx, float ry, float rz);
 inline void rotateComponent(CEntity* model, string component, CVector v) { rotateComponent(model, component, v.x, v.y, v.z); }
 void setVehicleComponentFlags(CVehicle* vehicle, string component, unsigned int flags);
