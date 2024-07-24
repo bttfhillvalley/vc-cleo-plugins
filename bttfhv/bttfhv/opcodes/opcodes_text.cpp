@@ -193,10 +193,10 @@ eOpcodeResult __stdcall textStyled(CScript* script) {
 eOpcodeResult __stdcall textLowPriority(CScript* script) {
 	script->Collect(2);
 	int language = FrontendMenuManager.m_nPrefsLanguage;
-	char fmt[MAX_PATH]; char text[MAX_PATH]; static wchar_t message_buf[MAX_PATH];
+	static wchar_t message_buf[MAX_PATH];
 	int time = Params[1].nVar;
 	getText(script, Params[0].cVar, message_buf);
-	CMessages::AddMessage(message_buf, time, 0);
+	CMessages::AddMessage(message_buf, time, 1);
 	script->m_dwIp++;
 	return OR_CONTINUE;
 }
@@ -207,7 +207,7 @@ eOpcodeResult __stdcall textHighPriority(CScript* script) {
 	static wchar_t message_buf[MAX_PATH];
 	int time = Params[1].nVar;
 	getText(script, Params[0].cVar, message_buf);
-	CMessages::AddMessageJumpQ(message_buf, time, 0);
+	CMessages::AddMessageJumpQ(message_buf, time, 1);
 	script->m_dwIp++;
 	return OR_CONTINUE;
 }
@@ -215,7 +215,7 @@ eOpcodeResult __stdcall textHighPriority(CScript* script) {
 eOpcodeResult __stdcall textDraw(CScript* script) {
 	script->Collect(3);
 	int language = FrontendMenuManager.m_nPrefsLanguage;
-	char fmt[MAX_PATH]; char text[MAX_PATH]; static wchar_t message_buf[MAX_PATH];
+	static wchar_t message_buf[MAX_PATH];
 	CTheScripts::IntroTextLines[CTheScripts::NumberOfIntroTextLinesThisFrame].m_fX = Params[0].fVar;
 	CTheScripts::IntroTextLines[CTheScripts::NumberOfIntroTextLinesThisFrame].m_fY = Params[1].fVar;
 	getText(script, Params[2].cVar, message_buf);
