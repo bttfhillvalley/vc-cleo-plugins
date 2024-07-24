@@ -150,3 +150,7 @@ eOpcodeResult __stdcall setReverb(CScript* script);
 
 // Text
 eOpcodeResult __stdcall textBox(CScript* script);
+eOpcodeResult __stdcall textStyled(CScript* script);
+eOpcodeResult __stdcall textLowPriority(CScript* script);
+eOpcodeResult __stdcall textHighPriority(CScript* script);
+eOpcodeResult __stdcall textDraw(CScript* script);

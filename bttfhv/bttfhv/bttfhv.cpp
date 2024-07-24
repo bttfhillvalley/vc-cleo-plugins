@@ -143,6 +143,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F67, getHandBrake);
 		Opcodes::RegisterOpcode(0x3F68, isDoingBurnout);
 		Opcodes::RegisterOpcode(0x3F70, textBox);
+		Opcodes::RegisterOpcode(0x3F71, textStyled);
+		Opcodes::RegisterOpcode(0x3F72, textLowPriority);
+		Opcodes::RegisterOpcode(0x3F73, textHighPriority);
+		Opcodes::RegisterOpcode(0x3F74, textDraw);
 		Opcodes::RegisterOpcode(0x3F80, stopAllSounds);
 		Opcodes::RegisterOpcode(0x3F81, stopSound);
 		Opcodes::RegisterOpcode(0x3F82, isSoundPlaying);
