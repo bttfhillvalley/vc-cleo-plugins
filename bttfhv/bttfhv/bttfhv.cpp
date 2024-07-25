@@ -242,7 +242,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
 			// Delorean stuff
 			Delorean* delorean;
-			
+
 			auto deloreanIterator = deloreanMap.find(vehicle);
 			if (deloreanIterator == deloreanMap.end()) {
 				if (vehicle->m_nState != STATUS_WRECKED) {
@@ -263,7 +263,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					delorean->Update();
 				}
 			}
-			
+
 			// Luxor stuff
 			Luxor* luxor;
 			auto luxorIterator = luxorMap.find(vehicle);

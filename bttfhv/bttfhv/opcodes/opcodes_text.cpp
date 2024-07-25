@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 
 #define SCRIPT_TEXT_MAX_LENGTH 100
 
@@ -155,18 +156,64 @@ int format(CScript* script, char* str, size_t len, const char* format) {
 	return (int)written;
 }
 
+void AnsiToGxt(wchar_t* src) {
+	for (int len = 0; *src != '\0' && len < MAX_PATH; len++, src++) {
+		if (*src < 0x80)
+			*src = *src;
+		else if (*src == 0x99)
+			*src = 0x40;
+		else if (*src == 0xA1)
+			*src = 0x5E;
+		else if (*src == 0xBF)
+			*src = 0xAF;
+		else if (*src == 0xBA)
+			*src = 0x5F;
+		else if (*src >= 0xC0 && *src <= 0xC3)
+			*src -= 0x40;
+		else if (*src == 0xC4)
+			*src = 0x83;
+		else if (*src >= 0xC6 && *src <= 0xCF)
+			*src -= 0x42;
+		else if (*src == 0xD1)
+			*src = 0xAD;
+		else if (*src >= 0xD3 && *src <= 0xD5)
+			*src -= 0x44;
+		else if (*src == 0xD6)
+			*src = 0x91;
+		else if (*src >= 0xD9 && *src <= 0xDC)
+			*src -= 0x47;
+		else if (*src >= 0xDF && *src <= 0xE3)
+			*src -= 0x49;
+		else if (*src == 0xE4)
+			*src = 0x9A;
+		else if (*src >= 0xE6 && *src <= 0xEF)
+			*src -= 0x4B;
+		else if (*src == 0xF1)
+			*src = 0xAE;
+		else if (*src >= 0xF2 && *src <= 0xF5)
+			*src -= 0x4D;
+		else if (*src == 0xF6)
+			*src = 0xA8;
+		else if (*src >= 0xF2 &&*src <= 0xFC)
+			*src -= 0x50;
+		else
+			*src = '#';
+	}
+	*src = L'\0';
+}
+
 void getText(CScript* script, char* key, wchar_t* message_buf) {
 	int language = FrontendMenuManager.m_nPrefsLanguage;
 	char fmt[MAX_PATH]; char text[MAX_PATH];
 	try {
 		strcpy(fmt, textFile.at(language).at(key).c_str());
 		format(script, text, sizeof(text), fmt);
-		swprintf(message_buf, MAX_PATH, L"%hs", text);
 	}
 	catch (out_of_range& e) {
 		sprintf(text, "'%s' not found", key);
-		swprintf(message_buf, MAX_PATH, L"%hs", text);
 	}
+	MultiByteToWideChar(CP_UTF8, 0, text, -1, message_buf, MAX_PATH);
+	AnsiToGxt(message_buf);
 }
 
 eOpcodeResult __stdcall textBox(CScript* script) {
