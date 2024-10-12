@@ -34,12 +34,12 @@ void InitializeKeyMap(void) {
 	keyMap.clear();
 
 	for (char c = 'A'; c <= 'Z'; c++) {
-		keyMap[string(1, c)] = MapVirtualKey(c, MAPVK_VK_TO_VSC);
+		keyMap[string(1, c)] = int(c);
 	}
 
 	// Number keys
 	for (char c = '0'; c <= '9'; c++) {
-		keyMap[string(1, c)] = MapVirtualKey(c, MAPVK_VK_TO_VSC);
+		keyMap[string(1, c)] = int(c);
 	}
 
 	// Numpad

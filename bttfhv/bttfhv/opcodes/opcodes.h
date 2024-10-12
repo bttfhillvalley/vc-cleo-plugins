@@ -112,6 +112,7 @@ eOpcodeResult __stdcall createCarComponent(CScript* script);
 eOpcodeResult __stdcall dmgDrawCarCollidingParticles(CScript* script);
 eOpcodeResult __stdcall getThrottle(CScript* script);
 eOpcodeResult __stdcall isDoingBurnout(CScript* script);
+eOpcodeResult __stdcall shakePad(CScript* script);
 
 // Texture
 eOpcodeResult __stdcall replaceTex(CScript* script);

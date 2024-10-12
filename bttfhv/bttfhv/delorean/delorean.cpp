@@ -130,5 +130,5 @@ void Delorean::Update() {
 	ProcessDoor();
 	ProcessBonnet();
 	ProcessShifter();
-	ProcessDamage();
+	//ProcessDamage();
 }

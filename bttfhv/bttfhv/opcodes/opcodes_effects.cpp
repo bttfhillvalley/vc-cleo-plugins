@@ -1,5 +1,6 @@
 #include "CPointLights.h"
 #include "CParticle.h"
+#include "CPad.h"
 #include "opcodes.h"
 
 eOpcodeResult __stdcall createLight(CScript* script)
@@ -23,5 +24,12 @@ eOpcodeResult __stdcall createParticle(CScript* script)
 	color.blue = Params[10].nVar;
 	color.alpha = Params[11].nVar;
 	CParticle::AddParticle((tParticleType)Params[0].nVar, pos, vel, NULL, Params[7].fVar, &color, 0, 0, 0, Params[12].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall shakePad(CScript* script)
+{
+	script->Collect(3);
+	CPad::GetPad(Params[0].nVar)->StartShake(Params[1].nVar, Params[2].nVar);
 	return OR_CONTINUE;
 }

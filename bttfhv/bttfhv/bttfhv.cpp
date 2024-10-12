@@ -142,6 +142,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		Opcodes::RegisterOpcode(0x3F66, getThrottle);
 		Opcodes::RegisterOpcode(0x3F67, getHandBrake);
 		Opcodes::RegisterOpcode(0x3F68, isDoingBurnout);
+		Opcodes::RegisterOpcode(0x3F69, shakePad);
 		Opcodes::RegisterOpcode(0x3F70, textBox);
 		Opcodes::RegisterOpcode(0x3F71, textStyled);
 		Opcodes::RegisterOpcode(0x3F72, textLowPriority);
@@ -326,6 +327,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			LoadAdditionalHandlingData();
 			LoadAdditionalVehicleColours();
 			LoadTextFiles();
+			UpdateHandling();
 
 			int millis = 60000;
 			auto it = configKeys.find("TIME_SCALE");
@@ -333,10 +335,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				millis = it->second;
 			}
 			patch::SetInt(0x97F2B4, millis, true); // Set real time
-		};
-
-		Events::initScriptsEvent += [] {
-			UpdateHandling();
 		};
 
 		Events::gameProcessEvent += [&] {
