@@ -20,118 +20,123 @@ enum {
 	MI_CAR_WHEEL,
 };
 
-/*
-* enum eDoors {
-    BONNET = 0,
-    BOOT = 1,
-    DOOR_FRONT_LEFT = 2,
-    DOOR_FRONT_RIGHT = 3,
-    DOOR_REAR_LEFT = 4,
-    DOOR_REAR_RIGHT = 5
-};
-
-enum ePanels {
-    WING_FRONT_LEFT = 0,
-    WING_FRONT_RIGHT = 1,
-    WING_REAR_LEFT = 2,
-    WING_REAR_RIGHT = 3,
-    WINDSCREEN = 4,
-    BUMP_FRONT = 5,
-    BUMP_REAR = 6
-};
-*/
-
-void Delorean::processDoorDamage(eDoors door, string component) {
-    unsigned int status = automobile->m_carDamage.GetDoorStatus(door);
-    RwFrame* frame = CClumpModelInfo::GetFrameFromName(automobile->m_pRwClump, component.c_str());
-    vector<RwFrame*> frames;
-    RwFrameForAllChildren(frame, ListFramesCB, &frames);
-    bool ok, dam;
-    char* name;
-    if (doorStatus[door] != status) {
-        doorStatus[door] = status;
-        if (status == 0 || status == 2) {
-            return;
-        }
-
-        ok = status == 0;
-        dam = status == 1;
-        for (auto f : frames) {
-            name = GetFrameNodeName(f);
-            if (strstr(name, "_fr") != NULL) {
-                continue;
-            }
-            if (strstr(name, "hi_ok") != NULL) {
-                setVisibility(automobile, name, ok);
-            }
-            else if (strstr(name, "hi_dam") != NULL) {
-                setVisibility(automobile, name, dam);
-				if (status == 3) {
-					SpawnFlyingComponent(name, door == BONNET ? COMPGROUP_BONNET : door == BOOT ? COMPGROUP_BOOT : COMPGROUP_DOOR);
-				}
-            }
-        }
-
-    }
+vector<RwFrame*> Delorean::GetFrames(vector<string> components) {
+	vector <RwFrame*> frames;
+	RwFrame* frame;
+	for (auto c : components) {
+		frame = CClumpModelInfo::GetFrameFromName(automobile->m_pRwClump, c.c_str());
+		if (frame) {
+			cout << "Cannot find " << c << endl;
+			frames.push_back(frame);
+		}
+	}
+	return frames;
 }
 
-void Delorean::processPanelDamage(ePanels panel, string component) {
-    unsigned int status = automobile->m_carDamage.GetPanelStatus(panel);
-    RwFrame* frame = CClumpModelInfo::GetFrameFromName(automobile->m_pRwClump, component.c_str());
-    vector<RwFrame*> frames;
-    RwFrameForAllChildren(frame, ListFramesCB, &frames);
-    bool ok, dam;
-    char* name;
-    if (panelStatus[panel] != status) {
+void Delorean::LoadFrames() {
+	bonnetFrames = GetFrames(BONNET_COMPONENTS);
+	bootFrames = GetFrames(BOOT_COMPONENTS);
+	doorLeftFrontFrames = GetFrames(DOOR_LF_COMPONENTS);
+	doorRightFrontFrames = GetFrames(DOOR_RF_COMPONENTS);
+	bumpFrontFrames = GetFrames(BUMP_FRONT_COMPONENTS);
+	bumpRearFrames = GetFrames(BUMP_REAR_COMPONENTS);
+	windscreenFrames = GetFrames(WINDSCREEN_COMPONENTS);
+	wingLeftFrontFrames = GetFrames(WING_LF_COMPONENTS);
+	wingLeftRearFrames = GetFrames(WING_LR_COMPONENTS);
+	wingRightFrontFrames = GetFrames(WING_RF_COMPONENTS);
+	wingRightRearFrames = GetFrames(WING_RR_COMPONENTS);
+	framesLoaded = true;
+}
+
+void Delorean::processDoorDamage(eDoors door, vector<RwFrame*> *frames) {
+	unsigned int status = automobile->m_carDamage.GetDoorStatus(door);
+	bool ok, dam;
+	char* name;
+	if (doorStatus[door] != status) {
+		doorStatus[door] = status;
+		if (!framesLoaded) {
+			LoadFrames();
+		}
+		if (status == 0 || status == 2) {
+			return;
+		}
+
+		ok = status == 0;
+		dam = status == 1;
+		for (auto f = frames->begin(); f != frames->end(); ++f) {
+			name = GetFrameNodeName(*f);
+			if (strstr(name, "_fr") != NULL) {
+				continue;
+			}
+			if (strstr(name, "hi_ok") != NULL) {
+				setVisibility(automobile, name, ok);
+			}
+			else if (strstr(name, "hi_dam") != NULL) {
+				setVisibility(automobile, name, dam);
+				if (status == 3) {
+					SpawnFlyingComponent(*f, door == BONNET ? COMPGROUP_BONNET : door == BOOT ? COMPGROUP_BOOT : COMPGROUP_DOOR);
+				}
+			}
+		}
+
+	}
+}
+
+void Delorean::processPanelDamage(ePanels panel, vector<RwFrame*> *frames) {
+	unsigned int status = automobile->m_carDamage.GetPanelStatus(panel);
+	bool ok, dam;
+	char* name;
+	if (panelStatus[panel] != status) {
+		if (!framesLoaded) {
+			LoadFrames();
+		}
 		panelStatus[panel] = status;
-        ok = status == 0;
-        dam = status == 1 || status == 2;
-        for (auto f : frames) {
-            name = GetFrameNodeName(f);
-            if (strstr(name, "_fr") != NULL) {
-                continue;
-            }
-            if (strstr(name, "hi_ok") != NULL) {
-                setVisibility(automobile, name, ok);
-            }
-            else if (strstr(name, "hi_dam") != NULL) {
-                setVisibility(automobile, name, dam);
+		ok = status == 0;
+		dam = status == 1 || status == 2;
+		for (auto f = frames->begin(); f != frames->end(); ++f) {
+			name = GetFrameNodeName(*f);
+			if (strstr(name, "_fr") != NULL) {
+				continue;
+			}
+			if (strstr(name, "hi_ok") != NULL) {
+				setVisibility(automobile, name, ok);
+			}
+			else if (strstr(name, "hi_dam") != NULL) {
+				setVisibility(automobile, name, dam);
 				if (status == 3) {
-					SpawnFlyingComponent(name, COMPGROUP_PANEL);
+					SpawnFlyingComponent(*f, COMPGROUP_PANEL);
 				}
-            }
-        }
-    }
+			}
+		}
+	}
 }
-
 
 void Delorean::ProcessDamage() {
-    processDoorDamage(BONNET, "fxbonnet_");
-    processDoorDamage(BOOT, "fxboot_");
-    processDoorDamage(DOOR_FRONT_LEFT, "fxdoorlf_");
-    processDoorDamage(DOOR_FRONT_RIGHT, "fxdoorrf_");
-    processPanelDamage(WING_FRONT_LEFT, "fxwinglf_");
-    processPanelDamage(WING_FRONT_RIGHT, "fxwingrf_");
-    processPanelDamage(WING_REAR_LEFT, "fxwinglr_");
-    processPanelDamage(WING_REAR_RIGHT, "fxwingrr_");
-    processPanelDamage(WINDSCREEN, "fxwindscreen_");
-    processPanelDamage(BUMP_FRONT, "fxbumpfront_");
-    processPanelDamage(BUMP_REAR, "fxbumprear_");
+	processDoorDamage(BONNET, &bonnetFrames);
+	processDoorDamage(BOOT, &bootFrames);
+	processDoorDamage(DOOR_FRONT_LEFT, &doorLeftFrontFrames);
+	processDoorDamage(DOOR_FRONT_RIGHT, &doorRightFrontFrames);
+	processPanelDamage(BUMP_FRONT, &bumpFrontFrames);
+	processPanelDamage(BUMP_REAR, &bumpRearFrames);
+	processPanelDamage(WINDSCREEN, &windscreenFrames);
+	processPanelDamage(WING_FRONT_LEFT, &wingLeftFrontFrames);
+	processPanelDamage(WING_REAR_LEFT, &wingLeftRearFrames);
+	processPanelDamage(WING_FRONT_RIGHT, &wingRightFrontFrames);
+	processPanelDamage(WING_REAR_RIGHT, &wingRightRearFrames);
 }
 
-CObject* Delorean::SpawnFlyingComponent(string component, unsigned int type)
+CObject* Delorean::SpawnFlyingComponent(RwFrame *frame, unsigned int type)
 {
-	cout << "Spawn flying component: " << component << endl;
 	RpAtomic* atomic;
-	RwFrame* frame;
 	RwMatrix* matrix;
 	CObject* obj;
 
 	if (CObject::nNoTempObjects >= NUMTEMPOBJECTS)
 		return NULL;
-
+	if (frame == NULL) {
+		return NULL;
+	}
 	atomic = NULL;
-	frame = CClumpModelInfo::GetFrameFromName(automobile->m_pRwClump, component.c_str());
 	RwFrameForAllObjects(frame, GetAtomicObjectCB, &atomic);
 	if (atomic == NULL)
 		return NULL;
@@ -140,6 +145,7 @@ CObject* Delorean::SpawnFlyingComponent(string component, unsigned int type)
 	if (obj == NULL)
 		return NULL;
 
+	string component = GetFrameNodeName(frame);
 	if (component.starts_with("windscreen")) {
 		obj->SetModelIndexNoCreate(MI_CAR_BONNET);
 	}
@@ -248,10 +254,7 @@ CObject* Delorean::SpawnFlyingComponent(string component, unsigned int type)
 		automobile->ApplyMoveForce(5.0f * dist);
 	}
 
-	/*if (CCollision::ProcessColModels(obj->GetMatrix(), *obj->GetColModel(),
-		automobile->m_placement, *CModelInfo::GetModelInfo(automobile->m_nModelIndex)->GetColModel(),
-		CWorld::m_aTempColPts, nil, nil) > 0)*/
-	//obj->m_pContactPhysical = automobile;
+	obj->m_pContactPhysical = automobile;
 
 	if (automobile->m_nFlags.bRenderScorched)
 		obj->m_nFlags.bRenderScorched = true;

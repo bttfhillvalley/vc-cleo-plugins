@@ -25,6 +25,7 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 	float fUp = 1.0f;
 	float fLandingSpeed = 0.1f;
 	float fPedalState = 0.0f;
+	float fTriggerState = 0.0f;
 	float fThrustAccel = 0.0f;
 	bool bBoostState = false;
 	if (landing) {
@@ -40,7 +41,11 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 
 	if (!CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE)) {
 		fPedalState = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
-		bBoostState = CPad::GetPad(0)->GetHandBrake() && fPedalState > 0.6f;
+		fTriggerState = (CPad::GetPad(0)->GetAccelerate() + CPad::GetPad(0)->GetBrake()) / 255.0f;
+		bBoostState = (CPad::GetPad(0)->GetHandBrake() && fPedalState > 0.6f) || fTriggerState == 2.0f;
+		if (fTriggerState == 2.0f) {
+			fPedalState = 1.0f;
+		}
 		if (fForwardSpeed > 0.0f || fPedalState > 0.0f) {
 			fThrustAccel = (fPedalState - fThrustFallOff * fForwardSpeed) * fThrust;
 		}

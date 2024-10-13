@@ -44,6 +44,7 @@ void Delorean::ShowStock() {
 
 void Delorean::Setup() {
 	int i;
+	framesLoaded = false;
 	for (i = 0; i < 6; i++) doorStatus[i] = 0;
 	SetupGlow();
 	SetupSid();
@@ -130,5 +131,5 @@ void Delorean::Update() {
 	ProcessDoor();
 	ProcessBonnet();
 	ProcessShifter();
-	//ProcessDamage();
+	ProcessDamage();
 }

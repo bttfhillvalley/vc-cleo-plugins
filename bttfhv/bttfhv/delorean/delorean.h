@@ -28,8 +28,22 @@ enum BOOT_STATE {
 class Delorean
 {
 private:
-	void processDoorDamage(eDoors door, string component);
-	void processPanelDamage(ePanels panel, string component);
+	vector<RwFrame*> bonnetFrames;
+	vector<RwFrame*> bootFrames;
+	vector<RwFrame*> doorLeftFrontFrames;
+	vector<RwFrame*> doorRightFrontFrames;
+	vector<RwFrame*> bumpFrontFrames;
+	vector<RwFrame*> bumpRearFrames;
+	vector<RwFrame*> windscreenFrames;
+	vector<RwFrame*> wingLeftFrontFrames;
+	vector<RwFrame*> wingLeftRearFrames;
+	vector<RwFrame*> wingRightFrontFrames;
+	vector<RwFrame*> wingRightRearFrames;
+	vector<RwFrame*> GetFrames(vector<string> components);
+	void LoadFrames();
+	bool framesLoaded;
+	void processDoorDamage(eDoors door, vector<RwFrame*> *frames);
+	void processPanelDamage(ePanels panel, vector<RwFrame*> *frames);
 public:
 	int vehicleHandle;
 
@@ -69,7 +83,7 @@ public:
 	void ProcessBonnet();
 	void ProcessShifter();
 	void ProcessDamage();
-	CObject* SpawnFlyingComponent(string component, unsigned int type);
+	CObject* SpawnFlyingComponent(RwFrame* frame, unsigned int type);
 
 	void Update();
 };

@@ -370,3 +370,86 @@ const vector<string> FROSTED_COMPONENTS = {
 	"vents_fr",
 	"bonnet_hi_fr",
 };
+
+const vector<string> BONNET_COMPONENTS = {
+	"bonnet_hi_dam",
+	"bonnet_hi_fr",
+	"bonnet_hi_ok",
+	"bonnetbttf3",
+};
+
+const vector<string> BOOT_COMPONENTS = {
+	"boot_hi_dam",
+	"boot_hi_ok",
+};
+
+const vector<string> DOOR_LF_COMPONENTS = {
+	"door_lf_hi_dam",
+	"door_lf_hi_fr",
+	"door_lf_hi_ok",
+	"door_lf_hi_ok_glass",
+	"door_lf_hi_ok_lights",
+	"door_lf_hi_dam_window",
+	"door_lf_hi_ok_window",
+	"door_lf_hi_window_fr",
+};
+
+const vector<string> DOOR_RF_COMPONENTS = {
+	"door_rf_hi_dam",
+	"door_rf_hi_fr",
+	"door_rf_hi_ok",
+	"door_rf_hi_ok_glass",
+	"door_rf_hi_ok_lights",
+	"door_rf_hi_dam_window",
+	"door_rf_hi_ok_window",
+	"door_rf_hi_window_fr",
+};
+
+const vector<string> BUMP_FRONT_COMPONENTS = {
+	"bump_front_hi_dam",
+	"bump_front_hi_ok",
+	"bump_front_hi_ok_grill",
+	"bump_front_hi_ok_grilltm",
+};
+
+const vector<string> BUMP_REAR_COMPONENTS = {
+	"bump_rear_hi_dam",
+	"bump_rear_hi_ok",
+};
+
+const vector<string> WINDSCREEN_COMPONENTS = {
+	"windscreen_hi_dam",
+	"windscreen_hi_fr",
+	"windscreen_hi_ok",
+	"windscreen_rearview",
+};
+
+const vector<string> WING_LF_COMPONENTS = {
+	"wing_lf_hi_dam",
+	"wing_lf_hi_fr",
+	"wing_lf_hi_ok",
+	"wing_lf_hi_sh",
+};
+
+const vector<string> WING_LR_COMPONENTS = {
+	"wing_lr_hi_dam",
+	"wing_lr_hi_fr",
+	"wing_lr_hi_ok",
+	"wing_lr_hi_ok_glass",
+	"wing_lr_hi_sh",
+};
+
+const vector<string> WING_RF_COMPONENTS = {
+	"wing_rf_hi_dam",
+	"wing_rf_hi_fr",
+	"wing_rf_hi_ok",
+	"wing_rf_hi_sh",
+};
+
+const vector<string> WING_RR_COMPONENTS = {
+	"wing_rr_hi_dam",
+	"wing_rr_hi_fr",
+	"wing_rr_hi_ok",
+	"wing_rr_hi_ok_glass",
+	"wing_rr_hi_sh",
+};
