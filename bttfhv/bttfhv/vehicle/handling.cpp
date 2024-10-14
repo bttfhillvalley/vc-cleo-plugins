@@ -50,7 +50,7 @@ void UpdateHandling() {
 	cout << "Updating handling" << endl;
 	for (auto modelInfo : CModelInfo::ms_vehicleModelStore->m_sObject) {
 		string name(modelInfo.m_szName);
-		cout << name << endl;
+		cout << "Model Name: " << name << endl;
 		if (!name.empty() && handlingData.contains(name)) {
 			cout << "Found vehicle: " << name << endl;
 			cout << "Updating handling id: " << modelInfo.m_nHandlingId << endl;

@@ -25,6 +25,8 @@
 #include "delorean\delorean.h"
 #include "luxor\luxor.h"
 
+using namespace std;
+
 tScriptVar* Params;
 
 boolean paused = false;
@@ -235,9 +237,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		patch::SetInt(0x6ADDA4, 3, true);     // Door Type (AIRBRAKES)
 
 		// Fix memory address pointer
-		CModelInfo::ms_modelInfoPtrs = (CBaseModelInfo**)patch::GetInt(0x55F799, true);;
-
+		CModelInfo::ms_modelInfoPtrs = (CBaseModelInfo**)patch::GetInt(0x55F799, true);
+		RwFrame* frame;
 		Events::vehicleRenderEvent.before += [&](CVehicle* vehicle) {
+
 			// Flying handling
 			UpdateFlyingHandling(vehicle);
 
@@ -246,7 +249,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
 			auto deloreanIterator = deloreanMap.find(vehicle);
 			if (deloreanIterator == deloreanMap.end()) {
-				if (vehicle->m_nState != STATUS_WRECKED) {
+				frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "chassis_hi");
+				if (frame) {
 					if (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2")) {
 						delorean = new Delorean(vehicle);
 						delorean->Update();
@@ -256,12 +260,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			}
 			else {
 				delorean = deloreanIterator->second;
-				if (delorean->IsWrecked()) {
-					delete delorean;
-					deloreanMap.erase(vehicle);
+				frame = CClumpModelInfo::GetFrameFromName(delorean->automobile->m_pRwClump, "chassis_hi");
+				if (frame) {
+					delorean->Update();
 				}
 				else {
-					delorean->Update();
+					delete delorean;
+					deloreanMap.erase(vehicle);
 				}
 			}
 
@@ -269,7 +274,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			Luxor* luxor;
 			auto luxorIterator = luxorMap.find(vehicle);
 			if (luxorIterator == luxorMap.end()) {
-				if (vehicle->m_nState != STATUS_WRECKED) {
+				frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "chassis_hi");
+				if (frame) {
 					if (getVisibility(vehicle, "carroceria")) {
 						luxor = new Luxor(vehicle);
 						luxor->Update();
@@ -279,12 +285,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			}
 			else {
 				luxor = luxorIterator->second;
-				if (luxor->IsWrecked()) {
-					delete luxor;
-					luxorMap.erase(vehicle);
+				frame = CClumpModelInfo::GetFrameFromName(luxor->automobile->m_pRwClump, "chassis_hi");
+				if (frame) {
+					luxor->Update();
 				}
 				else {
-					luxor->Update();
+					delete luxor;
+					luxorMap.erase(vehicle);
 				}
 			}
 

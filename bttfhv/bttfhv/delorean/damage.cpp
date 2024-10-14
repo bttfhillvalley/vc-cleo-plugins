@@ -26,7 +26,6 @@ vector<RwFrame*> Delorean::GetFrames(vector<string> components) {
 	for (auto c : components) {
 		frame = CClumpModelInfo::GetFrameFromName(automobile->m_pRwClump, c.c_str());
 		if (frame) {
-			cout << "Cannot find " << c << endl;
 			frames.push_back(frame);
 		}
 	}
@@ -68,6 +67,9 @@ void Delorean::processDoorDamage(eDoors door, vector<RwFrame*> *frames) {
 			if (strstr(name, "_fr") != NULL) {
 				continue;
 			}
+			if (IsTimeMachine() && door == BOOT) {
+				continue;
+			}
 			if (strstr(name, "hi_ok") != NULL) {
 				setVisibility(automobile, name, ok);
 			}
@@ -76,6 +78,11 @@ void Delorean::processDoorDamage(eDoors door, vector<RwFrame*> *frames) {
 				if (status == 3) {
 					SpawnFlyingComponent(*f, door == BONNET ? COMPGROUP_BONNET : door == BOOT ? COMPGROUP_BOOT : COMPGROUP_DOOR);
 				}
+			}
+			else if (status == 3 && getVisibility(automobile, name) != 0) {
+				setVisibility(automobile, name, 0);
+				SpawnFlyingComponent(*f, door == BONNET ? COMPGROUP_BONNET : door == BOOT ? COMPGROUP_BOOT : COMPGROUP_DOOR);
+
 			}
 		}
 

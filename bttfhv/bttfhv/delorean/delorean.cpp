@@ -46,6 +46,7 @@ void Delorean::Setup() {
 	int i;
 	framesLoaded = false;
 	for (i = 0; i < 6; i++) doorStatus[i] = 0;
+	for (i = 0; i < 7; i++) panelStatus[i] = 0;
 	SetupGlow();
 	SetupSid();
 	SetupPlutoniumBox();
