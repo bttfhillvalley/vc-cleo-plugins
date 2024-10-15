@@ -194,5 +194,4 @@ void Luxor::Update() {
 
 	UpdateWheels();
 	UpdateHover();
-	FixHoverPadShake(automobile);
 }

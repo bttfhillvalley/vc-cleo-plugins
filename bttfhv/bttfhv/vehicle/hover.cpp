@@ -138,6 +138,11 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 		// Limit sideways motion at higher speeds
 		rightVector *= powf(M_E, -2.0f * vehicle->m_vecMoveSpeed.Magnitude());
 		vehicle->ApplyMoveForce(GRAVITY * rightVector * vehicle->m_fMass * CTimer::ms_fTimeStep);
+	} else if (abs(vehicle->m_vecMoveSpeed.z) < 0.1f) {
+		// Don't allow any movement if on the ground and we aren't making any hover thrust
+		fPitch = 0.0f;
+		fRoll = 0.0f;
+		fYaw = 0.0f;
 	}
 
 	if (vehicle->m_placement.at.z > 0.0f) {

@@ -244,6 +244,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			// Flying handling
 			UpdateFlyingHandling(vehicle);
 
+			if (vehicle->m_nVehicleClass == 0) {
+				CAutomobile* automobile = reinterpret_cast<CAutomobile*>(vehicle);
+				FixHoverPadShake(automobile);
+			}
+
 			// Delorean stuff
 			Delorean* delorean;
 

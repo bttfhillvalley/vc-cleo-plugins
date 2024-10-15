@@ -134,5 +134,4 @@ void Delorean::Update() {
 	ProcessBonnet();
 	ProcessShifter();
 	ProcessDamage();
-	FixHoverPadShake(automobile);
 }
