@@ -202,3 +202,11 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 	return ((fHoverState > 0.8f && vehicle->m_placement.at.z > 0.0f && !landing && !damaged) ? HOVER_UP : HOVER_NONE) |
 		((fPedalState > 0.0f && bBoostState && boost && !landing && !damaged) ? HOVER_BOOST : HOVER_NONE);
 }
+
+void FixHoverPadShake(CAutomobile* automobile) {
+	for (int i = 0; i < 4; i++) {
+		if (automobile->m_carDamage.GetWheelStatus(i) == 2) {
+			automobile->stWheels[i].surfaceB = SURFACE_TARMAC;
+		}
+	}
+}

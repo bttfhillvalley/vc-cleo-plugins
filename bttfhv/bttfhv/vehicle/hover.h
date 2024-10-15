@@ -8,3 +8,4 @@ enum {
 };
 
 int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged);
+void FixHoverPadShake(CAutomobile* vehicle);

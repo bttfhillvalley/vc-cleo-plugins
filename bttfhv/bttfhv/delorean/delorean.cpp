@@ -7,6 +7,7 @@
 #include "../sound/sound.h"
 #include "../vehicle/components.h"
 #include "../vehicle/handling.h"
+#include "../vehicle/hover.h"
 #include <iostream>
 
 #include "delorean.h"
@@ -133,4 +134,5 @@ void Delorean::Update() {
 	ProcessBonnet();
 	ProcessShifter();
 	ProcessDamage();
+	FixHoverPadShake(automobile);
 }
