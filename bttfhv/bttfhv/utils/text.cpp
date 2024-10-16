@@ -71,6 +71,7 @@ void LoadTextFiles() {
 		}
 		textFile.push_back(textMap);
 	}
+	CFileMgr::SetDir("");
 
 	for (size_t n = 0; n < textFile.size(); n++) {
 		cout << getLanguageFile(n) << endl;
