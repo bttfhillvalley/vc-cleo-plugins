@@ -7,7 +7,8 @@
 using namespace std;
 
 const map<int, vector<string>> PLATE_OPTIONS = {
-	{ PLATE_STOCK, {} },
+	{ PLATE_NONE, {} },
+	{ PLATE_STOCK, PLATE_STOCK_COMPONENTS },
 	{ PLATE_OUTATIME, PLATE_OUTATIME_COMPONENTS },
 	{ PLATE_BARCODE, PLATE_BARCODE_COMPONENTS },
 };
@@ -35,18 +36,9 @@ const map<int, vector<string>> BODY_OPTIONS = {
 };
 
 const map<int, vector<string>> REAR_DECK_OPTIONS = {
+	{ REAR_DECK_NONE , {} },
 	{ REAR_DECK_PLUTONIUM, PLUTONIUM_CHAMBER_COMPONENTS },
 	{ REAR_DECK_FUSION, MR_FUSION_COMPONENTS },
-};
-
-const map<int, vector<string>> GRILL_HITCH_OPTIONS = {
-	{ GRILL_HITCH_STOCK, GRILL_HITCH_STOCK_COMPONENTS },
-	{ GRILL_HITCH_TM, GRILL_HITCH_TM_COMPONENTS },
-};
-
-const map<int, vector<string>> GRILL_BRACKET_OPTIONS = {
-	{ GRILL_BRACKET_STOCK, GRILL_BRACKET_STOCK_COMPONENTS },
-	{ GRILL_BRACKET_HOVER, GRILL_BRACKET_HOVER_COMPONENTS },
 };
 
 const map<int, vector<string>> DRIVETRAIN_OPTIONS{

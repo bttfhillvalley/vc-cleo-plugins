@@ -5,6 +5,10 @@
 
 using namespace std;
 
+const vector<string> PLATE_STOCK_COMPONENTS = {
+	"platestock",
+};
+
 const vector<string> PLATE_OUTATIME_COMPONENTS = {
 	"plate",
 };
@@ -61,6 +65,7 @@ const vector<string> STOCK_COMPONENTS = {
 	"back_glass",
 	"platestock",
 	"exhaustmodel",
+	"bump_front_hi_ok_grill",
 };
 
 const vector<string> TIME_MACHINE_COMPONENTS = {
@@ -122,28 +127,13 @@ const vector<string> TIME_MACHINE_COMPONENTS = {
 	"ventsweather",
 	"frontsusp",
 	"plate_back",
-};
-
-const vector<string> GRILL_HITCH_STOCK_COMPONENTS = {
-
-	"bump_front_hi_ok_grill",
-};
-
-const vector<string> GRILL_HITCH_TM_COMPONENTS = {
 	"grillhitch",
 	"bump_front_hi_ok_grilltm",
 };
 
-const vector<string> GRILL_BRACKET_STOCK_COMPONENTS = {
-	"grillhitchbracketbttf1",
-};
-
-const vector<string> GRILL_BRACKET_HOVER_COMPONENTS = {
-	"grillhitchbracketbttf2",
-};
-
 const vector<string> PLUTONIUM_CHAMBER_COMPONENTS = {
 	"bttf1",
+	"grillhitchbracketbttf1",
 	"nohookbttf1",
 	"reactorlidbttf1",
 };
@@ -152,6 +142,7 @@ const vector<string> MR_FUSION_COMPONENTS = {
 	"bttf2",
 	"mrfusion",
 	"fusionlatch",
+	"grillhitchbracketbttf2",
 };
 
 const vector<string> BULOVA_CLOCK_COMPONENTS = {

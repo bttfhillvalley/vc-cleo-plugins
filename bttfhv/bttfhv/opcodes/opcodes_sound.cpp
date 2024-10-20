@@ -80,7 +80,7 @@ eOpcodeResult __stdcall playKeypad(CScript* script)
 {
 	script->Collect(1);
 	char fullpath[128];
-	snprintf(fullpath, 128, ".\\sound\\%d.wav", Params[0].nVar);
+	snprintf(fullpath, 128, ".\\bttfhv\\sound\\%d.wav", Params[0].nVar);
 	if (filesystem::exists(fullpath)) {
 		m_soundEngine->play2D(fullpath);
 	}

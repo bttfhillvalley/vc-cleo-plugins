@@ -32,7 +32,7 @@ int findEmptyIndex(char* name) {
 
 void playSoundFile(string key, char* filename, bool loop) {
 	char fullpath[128];
-	snprintf(fullpath, 128, ".\\sound\\%s", filename);
+	snprintf(fullpath, 128, ".\\bttfhv\\sound\\%s", filename);
 	if (!filesystem::exists(fullpath)) {
 		return;
 	}
@@ -43,7 +43,7 @@ void playSoundFile(string key, char* filename, bool loop) {
 
 void playSoundFileLocation(string key, char* filename, bool loop, float x, float y, float z, float minDistance) {
 	char fullpath[128];
-	snprintf(fullpath, 128, ".\\sound\\%s", filename);
+	snprintf(fullpath, 128, ".\\bttfhv\\sound\\%s", filename);
 	if (!filesystem::exists(fullpath)) {
 		return;
 	}
@@ -60,7 +60,7 @@ void playSoundFileLocation(string key, char* filename, bool loop, float x, float
 
 void attachSoundFileToVehicle(CVehicle* vehicle, string key, char* filename, bool loop, float x, float y, float z, float minDistance) {
 	char fullpath[128];
-	snprintf(fullpath, 128, ".\\sound\\%s", filename);
+	snprintf(fullpath, 128, ".\\bttfhv\\sound\\%s", filename);
 	if (!filesystem::exists(fullpath)) {
 		return;
 	}

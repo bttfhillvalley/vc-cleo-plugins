@@ -254,24 +254,16 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
 			auto deloreanIterator = deloreanMap.find(vehicle);
 			if (deloreanIterator == deloreanMap.end()) {
-				frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "chassis_hi");
-				if (frame) {
-					if (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2")) {
-						delorean = new Delorean(vehicle);
-						delorean->Update();
-						deloreanMap[vehicle] = delorean;
-					}
+				if (vehicle->m_pRwObject != NULL && (getVisibility(vehicle, "bttf1") || getVisibility(vehicle, "bttf2"))) {
+					delorean = new Delorean(vehicle);
+					delorean->Update();
+					deloreanMap[vehicle] = delorean;
 				}
 			}
 			else {
 				delorean = deloreanIterator->second;
-				frame = CClumpModelInfo::GetFrameFromName(delorean->automobile->m_pRwClump, "chassis_hi");
-				if (frame) {
+				if (delorean->automobile->m_pRwObject != NULL) {
 					delorean->Update();
-				}
-				else {
-					delete delorean;
-					deloreanMap.erase(vehicle);
 				}
 			}
 
@@ -279,24 +271,16 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 			Luxor* luxor;
 			auto luxorIterator = luxorMap.find(vehicle);
 			if (luxorIterator == luxorMap.end()) {
-				frame = CClumpModelInfo::GetFrameFromName(vehicle->m_pRwClump, "chassis_hi");
-				if (frame) {
-					if (getVisibility(vehicle, "carroceria")) {
-						luxor = new Luxor(vehicle);
-						luxor->Update();
-						luxorMap[vehicle] = luxor;
-					}
+				if (vehicle->m_pRwObject != NULL && getVisibility(vehicle, "carroceria")) {
+					luxor = new Luxor(vehicle);
+					luxor->Update();
+					luxorMap[vehicle] = luxor;
 				}
 			}
 			else {
 				luxor = luxorIterator->second;
-				frame = CClumpModelInfo::GetFrameFromName(luxor->automobile->m_pRwClump, "chassis_hi");
-				if (frame) {
+				if (luxor->automobile->m_pRwObject != NULL) {
 					luxor->Update();
-				}
-				else {
-					delete luxor;
-					luxorMap.erase(vehicle);
 				}
 			}
 
@@ -370,6 +354,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				if (FrontendMenuManager.m_nCurrentMenuPage == MENUPAGE_SAVE_SUCCESSFUL && !saveSuccessful) {
 					saveSuccessful = true;
 					cout << "BTTFHV: Saved to " << FrontendMenuManager.m_nCurrentSaveSlot << endl;
+
+					// Handle Save here
+
+					// Write Delorean
+					// Write num entries
+					// Vehicle reference
+					// Delorean Variables
+
 				}
 				else if (FrontendMenuManager.m_nCurrentMenuPage != MENUPAGE_SAVE_SUCCESSFUL && saveSuccessful) {
 					saveSuccessful = false;
@@ -438,7 +430,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				}
 			}
 
-
 			// Removes dynamically created objects.  Has to be here because game script tick causes them to flash briefly
 			for (auto item : removeObjectQueue) {
 				auto models = item.second;
@@ -451,6 +442,21 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					if (models->find(object->m_nModelIndex) != models->end()) {
 						CWorld::Remove(object);
 					}
+				}
+			}
+
+			// Cleanup Old Vehicle references
+			for (auto [vehicle, delorean] : deloreanMap) {
+				if (vehicle->m_pRwObject == NULL) {
+					delete delorean;
+					deloreanMap.erase(vehicle);
+				}
+			}
+
+			for (auto [vehicle, luxor] : luxorMap) {
+				if (vehicle->m_pRwObject == NULL) {
+					delete luxor;
+					luxorMap.erase(vehicle);
 				}
 			}
 			/*animEntry* i = &anims[0];

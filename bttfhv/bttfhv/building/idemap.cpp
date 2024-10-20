@@ -12,7 +12,7 @@ set<int>* getModels(char* path) {
 		ifstream in;
 		char fullpath[128];
 		char idepath[128];
-		snprintf(fullpath, 128, "data\\%s.dat", path);
+		snprintf(fullpath, 128, ".\\bttfhv\\data\\%s.dat", path);
 		config_file config(fullpath);
 		for (auto param : config.paramLines) {
 			// Only look up IDEs

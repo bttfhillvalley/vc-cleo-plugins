@@ -170,5 +170,8 @@
     <Filter Include="luxor">
       <UniqueIdentifier>{066b4dd8-072e-4ff8-9e77-19830e9682ee}</UniqueIdentifier>
     </Filter>
+    <Filter Include="save">
+      <UniqueIdentifier>{d7a81161-7335-4e93-b10d-39c00afea8e0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

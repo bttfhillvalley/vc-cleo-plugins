@@ -24,7 +24,7 @@ void ConvertBikeDataToGameUnits(tBikeHandlingData* handling)
 	handling->m_fStoppieAng = sin(radians(handling->m_fStoppieAng));
 }
 
-bool doesFileExist(const char* filepath) {
+bool doesFileExist(string filepath) {
 	fstream infile(filepath);
 	return infile.good();
 }
@@ -150,11 +150,11 @@ void LoadAdditionalHandlingData(void)
 	tBoatHandlingData* boatHandling;
 	tBikeHandlingData* bikeHandling;
 
-	if (!doesFileExist(".\\DATA\\HANDLING_ADDITIONAL.CFG")) {
+	if (!doesFileExist(".\\BTTFHV\\DATA\\HANDLING_ADDITIONAL.CFG")) {
 		return;
 	}
 
-	CFileMgr::SetDir("DATA");
+	CFileMgr::SetDir("BTTFHV\\DATA");
 	CFileMgr::LoadFile("HANDLING_ADDITIONAL.CFG", work_buff, sizeof(work_buff), "r");
 	CFileMgr::SetDir("");
 
@@ -347,11 +347,11 @@ void LoadAdditionalVehicleColours(void)
 	int colors[16];
 	int n;
 
-	if (!doesFileExist(".\\DATA\\CARCOLS_ADDITIONAL.DAT")) {
+	if (!doesFileExist(".\\BTTFHV\\DATA\\CARCOLS_ADDITIONAL.DAT")) {
 		return;
 	}
 
-	CFileMgr::SetDir("DATA");
+	CFileMgr::SetDir("\\BTTFHV\\DATA");
 	fd = CFileMgr::OpenFile("CARCOLS_ADDITIONAL.DAT", "r");
 	CFileMgr::SetDir("");
 
@@ -413,11 +413,12 @@ void LoadAdditionalVehicleColours(void)
 				&colors[12], &colors[13],
 				&colors[14], &colors[15]);
 			CVehicleModelInfo* mi = (CVehicleModelInfo*)CModelInfo::GetModelInfo(name, NULL);
-			assert(mi);
-			mi->m_nNumColorVariations = (n - 1) / 2;
-			for (i = 0; i < mi->m_nNumColorVariations; i++) {
-				mi->m_anPrimaryColors[i] = colors[i * 2 + 0];
-				mi->m_anSecondaryColors[i] = colors[i * 2 + 1];
+			if (mi) {
+				mi->m_nNumColorVariations = (n - 1) / 2;
+				for (i = 0; i < mi->m_nNumColorVariations; i++) {
+					mi->m_anPrimaryColors[i] = colors[i * 2 + 0];
+					mi->m_anSecondaryColors[i] = colors[i * 2 + 1];
+				}
 			}
 		}
 	}

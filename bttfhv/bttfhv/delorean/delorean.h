@@ -11,20 +11,6 @@
 
 using namespace std;
 
-enum BONNET_STATE {
-	BONNET_CLOSED,
-	BONNET_CLOSING,
-	BONNET_OPENING,
-	BONNET_OPEN
-};
-
-enum BOOT_STATE {
-	BOOT_CLOSED,
-	BOOT_CLOSING,
-	BOOT_OPENING,
-	BOOT_OPEN
-};
-
 class Delorean
 {
 private:
@@ -56,6 +42,18 @@ public:
 	unsigned int doorStatus[6];
 	unsigned int panelStatus[7];
 
+	// Component states
+	uint8_t bodyType : 1;
+	uint8_t driveTrain : 1;
+	uint8_t wheelType : 2;
+	uint8_t rearDeck : 2;
+	uint8_t plateType : 2;
+	uint8_t hoodType : 1;
+	uint8_t hitch : 1;
+	uint8_t hookType : 2;
+	uint8_t bulovaClock : 1;
+	uint8_t fireboxGauge : 1;
+
 	Delorean(CVehicle* vehicle);
 
 	bool IsWrecked() { return automobile->m_nState == STATUS_WRECKED; }
@@ -83,6 +81,7 @@ public:
 	void ProcessBonnet();
 	void ProcessShifter();
 	void ProcessDamage();
+	void ProcessVariation();
 	CObject* SpawnFlyingComponent(RwFrame* frame, unsigned int type);
 
 	void Update();

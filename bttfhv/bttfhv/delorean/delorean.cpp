@@ -21,26 +21,31 @@ Delorean::Delorean(CVehicle* vehicle) {
 }
 
 void Delorean::ShowStock() {
-	ShowOption(WHEEL_OPTIONS, WHEEL_STOCK);
-	ShowOption(BODY_OPTIONS, BODY_STOCK);
-	ShowOption(GRILL_HITCH_OPTIONS, GRILL_HITCH_STOCK);
-	HideAllOptions(GRILL_BRACKET_OPTIONS);
-	HideAllOptions(REAR_DECK_OPTIONS);
+	bodyType = BODY_STOCK;
+	driveTrain = DRIVETRAIN_STOCK;
+	wheelType = WHEEL_STOCK;
+	rearDeck = REAR_DECK_NONE;
+	plateType = PLATE_NONE;
+	hoodType = HOOD_STOCK;
+	hitch = HITCH_NONE;
+	hookType = HOOK_NONE;
+	bulovaClock = BULOVA_CLOCK_NONE;
+	fireboxGauge = FIREBOX_GAUGE_NONE;
 
-	HideAllOptions(PLATE_OPTIONS);
-	ShowOption(HOOD_OPTIONS, HOOD_STOCK);
-	ShowOption(HITCH_OPTIONS, HITCH_NONE);
-	ShowOption(HOOK_OPTIONS, HOOK_NONE);
-	ShowOption(DRIVETRAIN_OPTIONS, DRIVETRAIN_STOCK);
-	ShowOption(BULOVA_CLOCK_OPTIONS, BULOVA_CLOCK_NONE);
-	ShowOption(FIREBOX_GAUGE_OPTIONS, FIREBOX_GAUGE_NONE);
+	ShowOption(BODY_OPTIONS, bodyType);
+	ShowOption(DRIVETRAIN_OPTIONS, driveTrain);
+	ShowOption(WHEEL_OPTIONS, wheelType);
+	ShowOption(REAR_DECK_OPTIONS, rearDeck);
+	ShowOption(PLATE_OPTIONS, plateType);
+	ShowOption(HOOD_OPTIONS, hoodType);
+	ShowOption(HITCH_OPTIONS, hitch);
+	ShowOption(HOOK_OPTIONS, hookType);
+	ShowOption(BULOVA_CLOCK_OPTIONS, bulovaClock);
+	ShowOption(FIREBOX_GAUGE_OPTIONS, fireboxGauge);
 
 	HideComponents(PLUTONIUM_COMPONENTS);
 	HideComponents(THRUSTER_COMPONENTS);
 	HideComponents(FROSTED_COMPONENTS);
-
-	// HACK: This allows CLEO to hook into the model by showing both underbody models
-	setVisibility(automobile, "underbodybttf2", 1);
 }
 
 void Delorean::Setup() {
@@ -127,6 +132,106 @@ bool Delorean::IsTimeMachine() {
 	return getVisibility(automobile, "bttf1") || getVisibility(automobile, "bttf2");
 }
 
+void Delorean::ProcessVariation() {
+	// Body Type
+	if (getVisibility(automobile, "bttfparts")) {
+		bodyType = BODY_TIME_MACHINE;
+	}
+	else {
+		bodyType = BODY_STOCK;
+	}
+
+	// Drivetrain
+	if (getVisibility(automobile, "underbodybttf2")) {
+		driveTrain = DRIVETRAIN_HOVER;
+	}
+	else {
+		driveTrain = DRIVETRAIN_STOCK;
+	}
+
+	// Wheels
+	if (getVisibility(automobile, "wheelbttf3lb") || getVisibility(automobile, "fxwheelbttf3lb")) {
+		wheelType = WHEEL_WHITEWALLS;
+	}
+	else if (getVisibility(automobile, "wheelbttf3rrlb") || getVisibility(automobile, "fxwheelbttf3rrlb")) {
+		wheelType = WHEEL_RAILROAD;
+	}
+	else {
+		wheelType = WHEEL_STOCK;
+	}
+
+	// Rear Deck
+	if (getVisibility(automobile, "bttf1")) {
+		rearDeck = REAR_DECK_PLUTONIUM;
+	}
+	else if (getVisibility(automobile, "bttf2")) {
+		rearDeck = REAR_DECK_FUSION;
+	}
+	else {
+		rearDeck = REAR_DECK_NONE;
+	}
+
+	// Plate
+	if (getVisibility(automobile, "platestock")) {
+		plateType = PLATE_STOCK;
+	}
+	else if (getVisibility(automobile, "plate")) {
+		plateType = PLATE_OUTATIME;
+	}
+	else if (getVisibility(automobile, "platebttf2")) {
+		plateType = PLATE_BARCODE;
+	}
+	else {
+		plateType = PLATE_NONE;
+	}
+
+	// Hook
+	if (getVisibility(automobile, "holderbttf1") && !getVisibility(automobile, "hookbttf1")) {
+		hookType = HOOK_HOLDER;
+	}
+	else if (getVisibility(automobile, "hookcablesoffbttf1")) {
+		hookType = HOOK_SIDE;
+	}
+	else if (getVisibility(automobile, "hookcablesonbttf1")) {
+		hookType = HOOK_UP;
+	}
+	else {
+		hookType = HOOK_NONE;
+	}
+
+	// Hood type
+	if (getVisibility(automobile, "bonnetbttf3")) {
+		hoodType = HOOD_HOODBOX;
+	}
+	else {
+		hoodType = HOOD_STOCK;
+	}
+
+	// Hitch
+	if (getVisibility(automobile, "hitch")) {
+		hitch = HITCH_ATTACHED;
+	}
+	else {
+		hitch = HITCH_NONE;
+	}
+
+	// Bulova Clock
+	if (getVisibility(automobile, "clock")) {
+		bulovaClock = BULOVA_CLOCK_ATTACHED;
+	}
+	else {
+		bulovaClock = BULOVA_CLOCK_NONE;
+	}
+
+	// Firebox Gauge
+	if (getVisibility(automobile, "fireboxgauge")) {
+		fireboxGauge = FIREBOX_GAUGE_ATTACHED;
+	}
+	else {
+		fireboxGauge = FIREBOX_GAUGE_NONE;
+	}
+}
+
 void Delorean::Update() {
 	HandleBonnet();
 	HandleBoot();
@@ -134,4 +239,5 @@ void Delorean::Update() {
 	ProcessBonnet();
 	ProcessShifter();
 	ProcessDamage();
+	ProcessVariation();
 }

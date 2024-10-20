@@ -32,7 +32,7 @@ void LoadTextFiles() {
 	size_t pos;
 	string language;
 	string lineConverted;
-	CFileMgr::SetDir("TEXT\\BTTF");
+	CFileMgr::SetDir("BTTFHV\\TEXT");
 	textFile.clear();
 
 	for (int i = 0; i < 5; i++) {

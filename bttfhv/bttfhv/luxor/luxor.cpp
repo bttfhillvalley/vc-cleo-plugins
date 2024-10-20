@@ -11,6 +11,16 @@
 
 #include "luxor.h"
 
+#define WHEEL_PIVOT_X 0.661602f
+#define WHEEL_PIVOT_Z -0.456927f
+#define WHEEL_LENGTH 0.094809921f
+#define WHEEL_ANGLE_OFFSET -1.016523966f
+
+#define SHOCK_PIVOT_X 0.658154f
+#define SHOCK_PIVOT_Z -0.090519f
+#define SHOCK_LENGTH_OFFSET 0.271618741f
+#define SHOCK_ANGLE_OFFSET -0.37252606f
+
 map<CVehicle*, Luxor*> luxorMap;
 
 Luxor::Luxor(CVehicle* vehicle) {
@@ -23,7 +33,16 @@ Luxor::Luxor(CVehicle* vehicle) {
 	setVisibility(automobile, "strutrb", 1);
 	setVisibility(automobile, "strutlf", 1);
 	setVisibility(automobile, "strutrf", 1);
-	UpdateFlyingHandling(automobile, "delorean");
+	setGlow(automobile, "fxwheellbon", 1);
+	setGlow(automobile, "fxwheelrbon", 1);
+	setGlow(automobile, "fxwheellfon", 1);
+	setGlow(automobile, "fxwheelrfon", 1);
+	setVisibility(automobile, "fxwheellbon", 0);
+	setVisibility(automobile, "fxwheelrbon", 0);
+	setVisibility(automobile, "fxwheellfon", 0);
+	setVisibility(automobile, "fxwheelrfon", 0);
+
+	UpdateFlyingHandling(automobile, "luxor");
 }
 
 void Luxor::Setup() {
@@ -32,9 +51,13 @@ void Luxor::Setup() {
 void Luxor::moveSuspension(string wheel, float offset) {
 	float damper = getHoverDamper();
 	CVector wheelPosition = getComponentPosition(automobile, "wheel_" + wheel + "_dummy");
+	CVector wheelRotation = getComponentRotation(automobile, "hoverjoint" + wheel + "_");
 	wheelPosition.x = 0.0f;
 	wheelPosition.y = 0.0f;
 	wheelPosition.z = damper * (wheelPosition.z - offset);
+	if (wheel[1] == 'f') {
+		wheelPosition.z -= fabsf(wheelRotation.y)/90.0 * 0.08f;
+	}
 	moveComponent(automobile, "strutunit" + wheel + "_", wheelPosition);
 }
 
@@ -156,6 +179,10 @@ void Luxor::UpdateHover() {
 		}
 		if (flyingFrame == 0 && automobile->nWheelsOnGround > 0) {
 			flying = STATUS_LANDED;
+			setVisibility(automobile, "fxwheellbon", 0);
+			setVisibility(automobile, "fxwheelrbon", 0);
+			setVisibility(automobile, "fxwheellfon", 0);
+			setVisibility(automobile, "fxwheelrfon", 0);
 		}
 	}
 
@@ -165,6 +192,8 @@ void Luxor::UpdateHover() {
 	float strutAngle = static_cast<float>(flyingFrame);
 	float rearWheelAngle = static_cast<float>(flyingFrame);
 	float frontWheelAngle = static_cast<float>(flyingFrame);
+
+	// Rear wheel animation
 	if (flyingFrame < 30) {
 		strutAngle *= 2.0f;
 		rearWheelAngle = 0.0f;
@@ -185,8 +214,26 @@ void Luxor::UpdateHover() {
 	rotateComponent(automobile, "strutarmrb_", CVector(strutAngle, 0.0f, 0.0f));
 	rotateComponent(automobile, "hoverjointlb_", CVector(0.0f, -rearWheelAngle, 0.0f));
 	rotateComponent(automobile, "hoverjointrb_", CVector(0.0f, rearWheelAngle, 0.0f));
-	rotateComponent(automobile, "strutarmlf_", CVector(0.0f, -frontWheelAngle, 0.0f));
-	rotateComponent(automobile, "strutarmrf_", CVector(0.0f, frontWheelAngle, 0.0f));
+
+	// Front Wheel Animation
+	float attachX = sinf(radians(frontWheelAngle + WHEEL_ANGLE_OFFSET)) * WHEEL_LENGTH + WHEEL_PIVOT_X;
+	float attachZ = cosf(radians(frontWheelAngle + WHEEL_ANGLE_OFFSET)) * WHEEL_LENGTH + WHEEL_PIVOT_Z;
+	float pistonLength = sqrtf(powf(attachX - SHOCK_PIVOT_X, 2) + powf(attachZ - SHOCK_PIVOT_Z, 2));
+	float shockAngle = -degrees(asinf((attachX - SHOCK_PIVOT_X) / pistonLength)) + SHOCK_ANGLE_OFFSET;
+	float adjustedPistonLength = pistonLength - SHOCK_LENGTH_OFFSET;
+
+	rotateComponent(automobile, "hoverjointlf_", CVector(0.0f, -frontWheelAngle, 0.0f));
+	rotateComponent(automobile, "hoverjointrf_", CVector(0.0f, frontWheelAngle, 0.0f));
+	rotateComponent(automobile, "shocklf_", CVector(0.0f, -shockAngle, 0.0f));
+	rotateComponent(automobile, "shockrf_", CVector(0.0f, shockAngle, 0.0f));
+	moveComponent(automobile, "shockpistonlf_", CVector(0.0f, 0.0f, -adjustedPistonLength));
+	moveComponent(automobile, "shockpistonrf_", CVector(0.0f, 0.0f, -adjustedPistonLength));
+
+	int alpha = min(flyingFrame * 4, 255);
+	setAlpha(automobile, "fxwheellbon", alpha);
+	setAlpha(automobile, "fxwheelrbon", alpha);
+	setAlpha(automobile, "fxwheellfon", alpha);
+	setAlpha(automobile, "fxwheelrfon", alpha);
 }
 
 void Luxor::Update() {

@@ -42,8 +42,9 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 	if (!CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE)) {
 		fPedalState = (CPad::GetPad(0)->GetAccelerate() - CPad::GetPad(0)->GetBrake()) / 255.0f;
 		fTriggerState = (CPad::GetPad(0)->GetAccelerate() + CPad::GetPad(0)->GetBrake()) / 255.0f;
-		bBoostState = (CPad::GetPad(0)->GetHandBrake() && fPedalState > 0.6f) || fTriggerState == 2.0f;
-		if (fTriggerState == 2.0f) {
+		bBoostState = (CPad::GetPad(0)->GetHandBrake() && fPedalState > 0.6f);
+		if (boost && fTriggerState == 2.0f) {
+			bBoostState = true;
 			fPedalState = 1.0f;
 		}
 		if (fForwardSpeed > 0.0f || fPedalState > 0.0f) {
@@ -54,7 +55,7 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 		}
 
 		// Handle Vent Boost
-		if (fPedalState > 0.0f && bBoostState && !landing) {
+		if (fPedalState > 0.0f && bBoostState && boost && !landing) {
 			fThrustAccel *= 0.8f;
 		} else {
 			fThrustAccel *= 0.3f;
@@ -90,6 +91,8 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 		else {
 			fHover = -fLandingSpeed / flyingHandling->fThrust;
 		}
+	}
+	if (vehicle->m_nState == STATUS_PHYSICS || (CPad::GetPad(0)->DisablePlayerControls && (FindPlayerVehicle() == vehicle || vehicle->m_nState == STATUS_PLAYER_REMOTE))) {
 		fYaw = 0.0f;
 		fPitch = Clamp(0.5f * DotProduct(vehicle->m_vecMoveSpeed, vehicle->m_placement.up), -0.1f, 0.1f);
 		fRoll = Clamp(0.5f * -vehicle->m_placement.right.z, -0.1f, 0.1f);

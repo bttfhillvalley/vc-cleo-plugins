@@ -1,6 +1,7 @@
 #pragma once
 
 enum Plate {
+	PLATE_NONE,
 	PLATE_STOCK,
 	PLATE_OUTATIME,
 	PLATE_BARCODE,
@@ -40,18 +41,9 @@ enum TimeMachine {
 };
 
 enum RearDeck {
+	REAR_DECK_NONE,
 	REAR_DECK_PLUTONIUM,
 	REAR_DECK_FUSION,
-};
-
-enum GrillHitch {
-	GRILL_HITCH_STOCK,
-	GRILL_HITCH_TM,
-};
-
-enum GrillBracket {
-	GRILL_BRACKET_STOCK,
-	GRILL_BRACKET_HOVER,
 };
 
 enum BulovaClock {
@@ -59,7 +51,7 @@ enum BulovaClock {
 	BULOVA_CLOCK_ATTACHED,
 };
 
-enum FireBoxGauge {
+enum FireboxGauge {
 	FIREBOX_GAUGE_NONE,
 	FIREBOX_GAUGE_ATTACHED,
 };
@@ -72,4 +64,18 @@ enum Shifter {
 	SHIFTER_3,
 	SHIFTER_4,
 	SHIFTER_5,
+};
+
+enum BONNET_STATE {
+	BONNET_CLOSED,
+	BONNET_CLOSING,
+	BONNET_OPENING,
+	BONNET_OPEN
+};
+
+enum BOOT_STATE {
+	BOOT_CLOSED,
+	BOOT_CLOSING,
+	BOOT_OPENING,
+	BOOT_OPEN
 };
