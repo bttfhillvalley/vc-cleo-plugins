@@ -82,6 +82,9 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 		}
 		else {
 			fHover = fHoverState;
+			if (fHoverState > 0.8f) {
+				fHover *= 2.0f;
+			}
 		}
 	}
 	else if (vehicle->m_nState == STATUS_PHYSICS) {
@@ -207,7 +210,7 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 			player->m_nUpsideDownCounter = 0;
 		}
 	}
-	return ((fHoverState > 0.8f && vehicle->m_placement.at.z > 0.0f && !landing && !damaged) ? HOVER_UP : HOVER_NONE) |
+	return ((fHoverState > 0.8f && !landing && !damaged) ? HOVER_UP : HOVER_NONE) |
 		((fPedalState > 0.0f && bBoostState && boost && !landing && !damaged) ? HOVER_BOOST : HOVER_NONE);
 }
 
