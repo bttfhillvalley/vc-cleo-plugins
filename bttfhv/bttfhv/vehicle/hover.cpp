@@ -83,7 +83,7 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 		else {
 			fHover = fHoverState;
 			if (fHoverState > 0.8f) {
-				fHover *= 2.0f;
+				fHover *= 1.5f;
 			}
 		}
 	}

@@ -379,6 +379,10 @@ const vector<string> BONNET_COMPONENTS = {
 	"bonnet_hi_fr",
 	"bonnet_hi_ok",
 	"bonnetbttf3",
+	"bonnetrstrut",
+	"bonnetrstrutp",
+	"bonnetlstrut",
+	"bonnetlstrutp",
 };
 
 const vector<string> BOOT_COMPONENTS = {
@@ -395,6 +399,8 @@ const vector<string> DOOR_LF_COMPONENTS = {
 	"door_lf_hi_dam_window",
 	"door_lf_hi_ok_window",
 	"door_lf_hi_window_fr",
+	"doorlfstrut",
+	"doorlfstrutp",
 };
 
 const vector<string> DOOR_RF_COMPONENTS = {
@@ -406,6 +412,8 @@ const vector<string> DOOR_RF_COMPONENTS = {
 	"door_rf_hi_dam_window",
 	"door_rf_hi_ok_window",
 	"door_rf_hi_window_fr",
+	"doorrfstrut",
+	"doorrfstrutp",
 };
 
 const vector<string> BUMP_FRONT_COMPONENTS = {

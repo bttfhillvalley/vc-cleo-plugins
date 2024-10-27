@@ -459,6 +459,11 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 					luxorMap.erase(vehicle);
 				}
 			}
+			for (auto [vehicle_id, attachment] : carAttachments) {
+				if (attachment.attached->m_pRwObject == NULL || attachment.vehicle->m_pRwObject == NULL) {
+					carAttachments.erase(vehicle_id);
+				}
+			}
 			/*animEntry* i = &anims[0];
 
 			if (i->timeremain != 0) {
