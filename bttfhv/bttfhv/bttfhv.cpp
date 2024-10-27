@@ -301,6 +301,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 				m_soundEngine = createIrrKlangDevice();
 				m_soundEngine->setRolloffFactor(1.5f);
 				m_soundEngine->setDopplerEffectParameters(3.0f, 10.0f);
+				m_soundEngine->setSoundVolume(volume / 127.0f);
 				loadedSound = true;
 			}
 			else {
