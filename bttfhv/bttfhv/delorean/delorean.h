@@ -26,8 +26,9 @@ private:
 	vector<RwFrame*> wingRightFrontFrames;
 	vector<RwFrame*> wingRightRearFrames;
 	vector<RwFrame*> GetFrames(vector<string> components);
-	void LoadFrames();
 	bool framesLoaded;
+
+	void LoadFrames();
 	void processDoorDamage(eDoors door, vector<RwFrame*> *frames);
 	void processPanelDamage(ePanels panel, vector<RwFrame*> *frames);
 public:
@@ -41,6 +42,8 @@ public:
 	float rpmNeedle = 0.0f;
 	unsigned int doorStatus[6];
 	unsigned int panelStatus[7];
+	float wheelRot[4];
+	float wheelSpeed[4];
 
 	// Component states
 	uint8_t bodyType : 1;
@@ -82,6 +85,7 @@ public:
 	void ProcessShifter();
 	void ProcessDamage();
 	void ProcessVariation();
+	void ProcessWheels();
 	CObject* SpawnFlyingComponent(RwFrame* frame, unsigned int type);
 
 	void Update();

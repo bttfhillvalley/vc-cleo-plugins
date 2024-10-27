@@ -91,3 +91,10 @@ enum
 	HANDLING_GOOD_INSAND = 0x4000000,
 	HANDLING_UNKNOWN = 0x8000000,	// something for helis and planes
 };
+
+enum eWheelStatus
+{
+	WHEEL_STATUS_OK,
+	WHEEL_STATUS_BURST,
+	WHEEL_STATUS_MISSING
+};

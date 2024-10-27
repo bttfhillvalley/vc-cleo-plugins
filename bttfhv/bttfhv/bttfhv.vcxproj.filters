@@ -85,6 +85,9 @@
     <ClCompile Include="opcodes\opcodes_text.cpp">
       <Filter>opcodes</Filter>
     </ClCompile>
+    <ClCompile Include="delorean\wheels.cpp">
+      <Filter>delorean</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />

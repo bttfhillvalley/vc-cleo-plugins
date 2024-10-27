@@ -16,9 +16,7 @@
 #define MI_CAR_PANEL 242
 
 string getComponentIndex(string name, int index) {
-	stringstream ss;
-	ss << name << index;
-	return ss.str();
+	return name + to_string(index);
 }
 
 void setVisibility(CEntity* model, string component, int visible) {

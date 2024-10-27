@@ -19,27 +19,22 @@
 
 void Delorean::ProcessDoor() {
 	// Doors
-	if (automobile->m_carDamage.GetDoorStatus(DOOR_FRONT_LEFT) != 2) {
-		rotateComponent(automobile, "fxdoorlf_", -getComponentRotation(automobile, "door_lf_dummy"));
-		float leftDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_LEFT].fAngle);
-		float leftPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(leftDoorAngle)));
-		float leftStrutAngle = 86.6f - degrees(asinf(sinf(leftDoorAngle) * DOOR_PIVOT / leftPiston));
-		rotateComponent(automobile, "doorlfstrut_", 0.0f, leftStrutAngle, 0.0f);
-		moveComponent(automobile, "doorlfstrutp", 0.0f, 0.0f, leftPiston - 0.259f);
-	}
+	rotateComponent(automobile, "fxdoorlf_", -getComponentRotation(automobile, "door_lf_dummy"));
+	float leftDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_LEFT].fAngle);
+	float leftPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(leftDoorAngle)));
+	float leftStrutAngle = 86.6f - degrees(asinf(sinf(leftDoorAngle) * DOOR_PIVOT / leftPiston));
+	rotateComponent(automobile, "doorlfstrut_", 0.0f, leftStrutAngle, 0.0f);
+	moveComponent(automobile, "doorlfstrutp", 0.0f, 0.0f, leftPiston - 0.259f);
 
-	if (automobile->m_carDamage.GetDoorStatus(DOOR_FRONT_RIGHT) != 2) {
-		rotateComponent(automobile, "fxdoorrf_", -getComponentRotation(automobile, "door_rf_dummy"));
-		float rightDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_RIGHT].fAngle);
-		float rightPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(rightDoorAngle)));
-		float rightStrutAngle = -(86.6f - degrees(asinf(sinf(rightDoorAngle) * DOOR_PIVOT / rightPiston)));
-		rotateComponent(automobile, "doorrfstrut_", 0.0f, rightStrutAngle, 0.0f);
-		moveComponent(automobile, "doorrfstrutp", 0.0f, 0.0f, rightPiston - 0.259f);
-	}
+	rotateComponent(automobile, "fxdoorrf_", -getComponentRotation(automobile, "door_rf_dummy"));
+	float rightDoorAngle = abs(automobile->m_aDoors[DOOR_FRONT_RIGHT].fAngle);
+	float rightPiston = sqrtf(SQR(DOOR_PIVOT) + SQR(BODY_PIVOT) - (2.0f * DOOR_PIVOT * BODY_PIVOT * cos(rightDoorAngle)));
+	float rightStrutAngle = -(86.6f - degrees(asinf(sinf(rightDoorAngle) * DOOR_PIVOT / rightPiston)));
+	rotateComponent(automobile, "doorrfstrut_", 0.0f, rightStrutAngle, 0.0f);
+	moveComponent(automobile, "doorrfstrutp", 0.0f, 0.0f, rightPiston - 0.259f);
 }
 
 void Delorean::ProcessBonnet() {
-	if (automobile->m_carDamage.GetDoorStatus(BONNET) == 2) return;
 	rotateComponent(automobile, "fxbonnet_", getComponentRotation(automobile, "bonnet_dummy"));
 	float hoodAngle = -automobile->m_aDoors[BONNET].fAngle + BONNET_ANGLE_OFFSET;
 	CVector attachment;

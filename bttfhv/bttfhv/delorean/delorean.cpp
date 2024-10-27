@@ -25,7 +25,7 @@ void Delorean::ShowStock() {
 	driveTrain = DRIVETRAIN_STOCK;
 	wheelType = WHEEL_STOCK;
 	rearDeck = REAR_DECK_NONE;
-	plateType = PLATE_NONE;
+	plateType = PLATE_STOCK;
 	hoodType = HOOD_STOCK;
 	hitch = HITCH_NONE;
 	hookType = HOOK_NONE;
@@ -235,6 +235,7 @@ void Delorean::ProcessVariation() {
 void Delorean::Update() {
 	HandleBonnet();
 	HandleBoot();
+	ProcessWheels();
 	ProcessDoor();
 	ProcessBonnet();
 	ProcessShifter();

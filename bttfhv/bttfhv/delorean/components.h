@@ -17,10 +17,6 @@ const vector<string> PLATE_BARCODE_COMPONENTS = {
 	"platebttf2",
 };
 
-const vector<string> HOOK_NONE_COMPONENTS = {
-
-};
-
 const vector<string> HOOK_HOLDER_COMPONENTS = {
 	"holderbttf1",
 	"hookguidebttf1",
@@ -66,6 +62,11 @@ const vector<string> STOCK_COMPONENTS = {
 	"platestock",
 	"exhaustmodel",
 	"bump_front_hi_ok_grill",
+	"bonnetanchorl",
+	"bonnetanchorr",
+	"floormats",
+	"wcontrollf",
+	"wcontrolrf",
 };
 
 const vector<string> TIME_MACHINE_COMPONENTS = {
@@ -129,6 +130,7 @@ const vector<string> TIME_MACHINE_COMPONENTS = {
 	"plate_back",
 	"grillhitch",
 	"bump_front_hi_ok_grilltm",
+	"exhaustmodeltm",
 };
 
 const vector<string> PLUTONIUM_CHAMBER_COMPONENTS = {

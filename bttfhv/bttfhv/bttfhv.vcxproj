@@ -108,6 +108,7 @@
     <ClCompile Include="delorean\shifter.cpp" />
     <ClCompile Include="delorean\sid.cpp" />
     <ClCompile Include="delorean\timecircuits.cpp" />
+    <ClCompile Include="delorean\wheels.cpp" />
     <ClCompile Include="luxor\luxor.cpp" />
     <ClCompile Include="opcodes\opcodes_animation.cpp" />
     <ClCompile Include="opcodes\opcodes_building.cpp" />

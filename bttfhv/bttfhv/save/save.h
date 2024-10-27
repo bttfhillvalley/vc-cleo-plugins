@@ -1,21 +1,11 @@
 #pragma once
 
-#ifdef VALIDATE_SAVE_SIZE
-extern int32 _saveBufCount;
-#define INITSAVEBUF _saveBufCount = 0;
-#define VALIDATESAVEBUF(b) assert(_saveBufCount == b);
-#else
 #define INITSAVEBUF
 #define VALIDATESAVEBUF(b)
-#endif
 
-inline void
-SkipSaveBuf(uint8 *&buf, int32 skip)
+inline void SkipSaveBuf(uint8_t *&buf, int32_t skip)
 {
 	buf += skip;
-#ifdef VALIDATE_SAVE_SIZE
-	_saveBufCount += skip;
-#endif
 }
 
 inline void
@@ -23,9 +13,6 @@ SkipSaveBuf(uint8*& buf, uint32 &length, int32 skip)
 {
 	buf += skip;
 	length += skip;
-#ifdef VALIDATE_SAVE_SIZE
-	_saveBufCount += skip;
-#endif
 }
 
 template<typename T>
