@@ -106,9 +106,11 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 	if (!damaged) {
 		fHover = flyingHandling->fThrust * fHover;
 		if (vehicle->GetPosition().z > 1000.0f)
-			fHover *= 10.0f / (vehicle->GetPosition().z - 70.0f);
+			fHover *= 10.0f / (vehicle->GetPosition().z - 1000.0f);
 	}
 	else {
+		fThrustAccel = 0.0f;
+		fHover = 0.0f;
 		fPitch = Clamp(fPitch * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.x), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
 		fRoll = Clamp(fRoll * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.y), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
 		fYaw = Clamp(fYaw * Clamp(5.0f - abs(vehicle->m_vecTurnSpeed.z), 0.0f, 5.0f) / 5.0f, -0.5f, 0.5f);
@@ -118,12 +120,10 @@ int HoverControl(CVehicle* vehicle, bool boost, bool landing, bool damaged)
 		// Hover
 		CVector upVector(cos(fAttitudeUp) * cos(fHeading), cos(fAttitudeUp) * sin(fHeading), sin(fAttitudeUp));
 		upVector.Normalise();
-		if (!damaged) {
-			float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
-			fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
-		}
-		else {
-			fUp = 0.4f;
+		float fLiftSpeed = DotProduct(vehicle->m_vecMoveSpeed, upVector);
+		fUp -= flyingHandling->fThrustFallOff * fLiftSpeed;
+		if (damaged) {
+			fUp -= 0.4f;
 		}
 		fUp *= cos(fAttitude);
 

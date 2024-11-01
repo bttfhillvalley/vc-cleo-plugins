@@ -6,6 +6,7 @@
 #include "../vehicle/components.h"
 #include "../vehicle.h"
 #include "delorean.h"
+#include <iostream>
 
 #define BODY_PIVOT (0.364084f)
 #define DOOR_PIVOT (0.105361f)
@@ -84,10 +85,12 @@ void Delorean::HandleBonnet() {
 	CVector front = getOffsetFromCar(automobile, CVector(0.0f, 3.25f, 0.0f));
 	CVector left = getOffsetFromCar(automobile, CVector(-1.5f, 1.5f, 0.0f));
 	CVector right = getOffsetFromCar(automobile, CVector(1.5f, 1.5f, 0.0f));
+
 	if (CPad::GetPad(0)->NewState.LeftShoulder1 != 0
 		&& (isPlayerInSphere(front, CVector(0.75f, 0.75f, 2.0f))
 		|| isPlayerInSphere(left, CVector(0.75f, 0.75f, 2.0f))
 		|| isPlayerInSphere(right, CVector(0.75f, 0.75f, 2.0f)))) {
+
 		switch (bonnetState) {
 		case BONNET_OPENING:
 		case BONNET_CLOSING:

@@ -1,6 +1,7 @@
 #include "CPointLights.h"
 #include "CParticle.h"
 #include "CPad.h"
+#include "CWeather.h"
 #include "opcodes.h"
 
 eOpcodeResult __stdcall createLight(CScript* script)
@@ -31,5 +32,17 @@ eOpcodeResult __stdcall shakePad(CScript* script)
 {
 	script->Collect(3);
 	CPad::GetPad(Params[0].nVar)->StartShake(Params[1].nVar, Params[2].nVar);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isLightningBurst(CScript* script)
+{
+	script->UpdateCompareFlag(CWeather::LightningBurst);
+	return OR_CONTINUE;
+}
+
+eOpcodeResult __stdcall isNotLightningBurst(CScript* script)
+{
+	script->UpdateCompareFlag(!CWeather::LightningBurst);
 	return OR_CONTINUE;
 }

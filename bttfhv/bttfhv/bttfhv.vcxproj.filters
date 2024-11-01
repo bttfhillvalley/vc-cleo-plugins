@@ -88,6 +88,9 @@
     <ClCompile Include="delorean\wheels.cpp">
       <Filter>delorean</Filter>
     </ClCompile>
+    <ClCompile Include="opcodes\opcodes_keys.cpp">
+      <Filter>opcodes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />

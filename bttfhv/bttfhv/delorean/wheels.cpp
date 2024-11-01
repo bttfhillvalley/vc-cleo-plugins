@@ -57,13 +57,10 @@ void Delorean::ProcessWheels() {
 			w = "rb";
 			break;
 		}
-		float ext = w[0] == 'l' ? abs(extension.x) * -1.0f : abs(extension.x);
 		float offset = w[1] == 'f' ? WHEEL_FRONT_OFFSET : WHEEL_REAR_OFFSET;
 		CVector pos = getComponentPosition(automobile, "wheel_" + w + "_dummy");
-		CVector unit(ext, 0.0f, 0.0f);
 		CVector arm(0.0f, 0.0f, (pos.z - offset) * damper);
 
-		moveComponent(automobile, "strutunit" + w + "_", unit);
 		moveComponent(automobile, "strutarm" + w + "_", arm);
 
 		// Rotation

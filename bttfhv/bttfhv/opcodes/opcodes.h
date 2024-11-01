@@ -128,6 +128,8 @@ eOpcodeResult __stdcall setBuildingComponentVisibility(CScript* script);
 // Animation
 eOpcodeResult __stdcall playCharAnim(CScript* script);
 eOpcodeResult __stdcall createKnockback(CScript* script);
+eOpcodeResult __stdcall isLightningBurst(CScript* script);
+eOpcodeResult __stdcall isNotLightningBurst(CScript* script);
 
 // Sound
 eOpcodeResult __stdcall stopAllSounds(CScript* script);
@@ -155,3 +157,7 @@ eOpcodeResult __stdcall textStyled(CScript* script);
 eOpcodeResult __stdcall textLowPriority(CScript* script);
 eOpcodeResult __stdcall textHighPriority(CScript* script);
 eOpcodeResult __stdcall textDraw(CScript* script);
+
+// Keys
+eOpcodeResult __stdcall isAnaloguePressed(CScript* script);
+eOpcodeResult __stdcall isAnalogueNotPressed(CScript* script);

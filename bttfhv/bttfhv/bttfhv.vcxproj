@@ -113,6 +113,7 @@
     <ClCompile Include="opcodes\opcodes_animation.cpp" />
     <ClCompile Include="opcodes\opcodes_building.cpp" />
     <ClCompile Include="opcodes\opcodes_effects.cpp" />
+    <ClCompile Include="opcodes\opcodes_keys.cpp" />
     <ClCompile Include="opcodes\opcodes_math.cpp" />
     <ClCompile Include="opcodes\opcodes_sound.cpp" />
     <ClCompile Include="opcodes\opcodes_text.cpp" />

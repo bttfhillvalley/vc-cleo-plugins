@@ -9,6 +9,7 @@ struct CarAttachments {
 	CVehicle* vehicle;
 	CVehicle* attached;
 	CMatrix offset;
+	bool cleanup;
 };
 
 extern map<int, CarAttachments> carAttachments;
