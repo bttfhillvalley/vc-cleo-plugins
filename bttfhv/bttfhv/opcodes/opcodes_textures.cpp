@@ -6,7 +6,7 @@ void _loadTxd(const char* txd) {
 	if (slot == -1) {
 		slot = CTxdStore::AddTxdSlot(txd);
 		char fullpath[128];
-		snprintf(fullpath, 128, ".\\models\\%s.txd", txd);
+		snprintf(fullpath, 128, ".\\bttfhv\\models\\%s.txd", txd);
 		CTxdStore::LoadTxd(slot, fullpath);
 		CTxdStore::AddRef(slot);
 	}
