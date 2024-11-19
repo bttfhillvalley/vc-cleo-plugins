@@ -195,6 +195,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 		patch::Nop(0x593F83, 10, true);
 		patch::Nop(0x593F90, 10, true);
 		patch::Nop(0x593FAA, 10, true);
+
+		// Disable Voodoo Hydraulics to not interfere with the BTTF3 DeLorean
+		patch::Nop(0x59461B, 5, true);
 /*
 		// These next ones disables the collapsing of frames on particular dummies
 		patch::SetInt(0x699730, 0x80, true); // Front Bumper
