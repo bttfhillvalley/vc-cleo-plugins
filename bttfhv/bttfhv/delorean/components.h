@@ -173,6 +173,7 @@ const vector<string> DRIVETRAIN_STOCK_COMPONENTS = {
 const vector<string> DRIVETRAIN_HOVER_COMPONENTS = {
 	// BTTF2 parts
 	"xchassisbttf2",
+	"xchassiscoverbttf2",
 	"underbodybttf2",
 	"bonnetanchorlbttf2",
 	"bonnetanchorrbttf2",
