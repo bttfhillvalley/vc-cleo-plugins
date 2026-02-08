@@ -168,6 +168,7 @@ const vector<string> DRIVETRAIN_STOCK_COMPONENTS = {
 	"underbody",
 	"bonnetanchorl",
 	"bonnetanchorr",
+	"transmissionmodel",
 };
 
 const vector<string> DRIVETRAIN_HOVER_COMPONENTS = {
